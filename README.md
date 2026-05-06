@@ -1,9 +1,9 @@
 # Astralis_UNAL
 
-##Introducción:
+## Introducción:
 ASTRALIS es una plataforma que tiene el propósito de simular, visualizar y predecir fenómenos astronómicos utilizando datos reales de la NASA. Siendo una aplicación en donde no solo se va a limitar en el ámbito académico , sino también tendrá aspectos reales como lo son: La seguridad, automatización y uso de modelos de machine learning.
 
-##Roles:
+## Roles:
 E1- Backend(Cristian Moreno):
 
 Será el encargado de diseñar y desarrollar la API que servirá como núcleo del sistema para la comunicación entre todos los módulos. Se encarga de gestionar la lógica, la autenticación y la seguridad de datos, Para esto , utilizará herramientas como FastAPI,PostgreSQL,JWT,OAuth2 y OpenAPI.
