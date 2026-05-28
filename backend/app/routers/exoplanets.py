@@ -1,49 +1,74 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional
-from app.models import Exoplanet, MLPredictionRequest, MLPredictionResponse
-from app.security import get_current_user
+import math
+import random
+from fastapi import APIRouter, HTTPException, Query
+from app.services.nasa import get_exoplanets, get_exoplanet_by_id
+from app.schemas.index import PaginatedResponse, Exoplanet
+from pydantic import BaseModel
 
-router = APIRouter(prefix="/api", tags=["Exoplanets & ML"])
+router = APIRouter(prefix="/api/exoplanets", tags=["exoplanets"])
 
-# Mock DB
-exoplanets_db = [
-    Exoplanet(id=1, name="Kepler-186f", discovery_method="Transit", mass=1.4, radius=1.1, orbital_period=129.9, is_confirmed=True),
-    Exoplanet(id=2, name="Proxima Centauri b", discovery_method="Radial Velocity", mass=1.27, radius=None, orbital_period=11.2, is_confirmed=True),
-    Exoplanet(id=3, name="KOI-456.04", discovery_method="Transit", mass=None, radius=1.9, orbital_period=378.0, is_confirmed=False),
-]
 
-@router.get("/exoplanets", response_model=List[Exoplanet])
-def get_exoplanets(is_confirmed: Optional[bool] = None, discovery_method: Optional[str] = None):
-    results = exoplanets_db
-    if is_confirmed is not None:
-        results = [e for e in results if e.is_confirmed == is_confirmed]
-    if discovery_method:
-        results = [e for e in results if e.discovery_method.lower() == discovery_method.lower()]
-    return results
+class LightCurvePoint(BaseModel):
+    time: float       # horas relativas al centro del tránsito
+    flux: float       # flujo normalizado (1.0 = sin tránsito)
+    fluxNoise: float  # con ruido realista
 
-@router.get("/exoplanets/{exoplanet_id}", response_model=Exoplanet)
-def get_exoplanet(exoplanet_id: int):
-    for e in exoplanets_db:
-        if e.id == exoplanet_id:
-            return e
-    raise HTTPException(status_code=404, detail="Exoplanet not found")
 
-@router.get("/exoplanets/{exoplanet_id}/light-curve")
-def get_light_curve(exoplanet_id: int):
-    # This endpoint mocks the retrieval of a transit light curve for RF-07
-    return {
-        "exoplanet_id": exoplanet_id,
-        "time_series": [0.0, 1.0, 2.0, 3.0, 4.0],
-        "flux": [1.0, 1.0, 0.98, 1.0, 1.0],
-        "description": "Mock light curve data demonstrating a planet transit."
-    }
+def _transit_depth(planet_radius: float) -> float:
+    ratio = planet_radius * 0.009167  # radios terrestres → radios solares
+    return min(ratio * ratio, 0.05)
 
-@router.post("/ml/predict", response_model=MLPredictionResponse)
-def predict_exoplanet(features: MLPredictionRequest, current_user: str = Depends(get_current_user)):
-    # This mocks the RF-04 interaction with the ML microservice
-    # Let's say if radius is mostly Earth-like, it gives a high confidence
-    confidence = 0.95 if 0.8 <= features.radius <= 2.0 else 0.45
-    return MLPredictionResponse(
-        is_exoplanet_candidate=confidence > 0.5,
-        confidence=confidence
-    )
+
+def _transit_shape(t: float, duration: float, depth: float) -> float:
+    half_d = duration / 2
+    ingress = duration * 0.15
+    if abs(t) > half_d:
+        return 1.0
+    if abs(t) > half_d - ingress:
+        phase = (half_d - abs(t)) / ingress
+        return 1.0 - depth * math.sin((phase * math.pi) / 2) ** 2
+    return 1.0 - depth
+
+
+def _generate_light_curve(planet_radius: float, orbital_period: float) -> list[dict]:
+    depth = _transit_depth(planet_radius)
+    duration = min(orbital_period * 0.01, 8)
+    noise_level = 0.0008 + random.random() * 0.0004
+    total_time = duration * 4
+    steps = 200
+    points = []
+    for i in range(steps + 1):
+        t = -total_time / 2 + (i / steps) * total_time
+        flux = _transit_shape(t, duration, depth)
+        noise = (random.random() - 0.5) * 2 * noise_level
+        points.append({
+            "time": round(t, 3),
+            "flux": round(flux, 6),
+            "fluxNoise": round(flux + noise, 6),
+        })
+    return points
+
+
+@router.get("", response_model=PaginatedResponse[Exoplanet])
+async def list_exoplanets(
+    page: int = Query(1, ge=1),
+    filter: str | None = Query(None, description="CONFIRMED | FALSE_POSITIVE | CANDIDATE"),
+    pageSize: int = Query(10, ge=1, le=100),
+):
+    return get_exoplanets(page=page, page_size=pageSize, filter_classification=filter)
+
+
+@router.get("/{exoplanet_id}/lightcurve", response_model=list[LightCurvePoint])
+async def get_light_curve(exoplanet_id: str):
+    exoplanet = get_exoplanet_by_id(exoplanet_id)
+    if not exoplanet:
+        raise HTTPException(status_code=404, detail=f"Exoplaneta {exoplanet_id} no encontrado")
+    return _generate_light_curve(exoplanet["planetRadius"], exoplanet["orbitalPeriod"])
+
+
+@router.get("/{exoplanet_id}", response_model=Exoplanet)
+async def get_exoplanet(exoplanet_id: str):
+    exoplanet = get_exoplanet_by_id(exoplanet_id)
+    if not exoplanet:
+        raise HTTPException(status_code=404, detail=f"Exoplaneta {exoplanet_id} no encontrado")
+    return exoplanet

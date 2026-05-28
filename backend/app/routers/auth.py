@@ -1,39 +1,58 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from app.models import Token, UserCreate, UserResponse
-from app.security import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from datetime import timedelta
+"""
+Router de autenticación.
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+Por ahora usa un dict en memoria para no requerir PostgreSQL desde el día 1.
+Cuando tengas la DB lista, reemplaza `_users_db` con queries SQLAlchemy —
+la interfaz del router no cambia.
+"""
+import uuid
+from fastapi import APIRouter, HTTPException, status
+from app.schemas.index import LoginCredentials, RegisterCredentials, AuthResponse, UserOut
+from app.core.security import hash_password, verify_password, create_access_token
 
-# Mock DB
-users_db = {}
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate):
-    if user.username in users_db:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    
-    hashed_password = get_password_hash(user.password)
-    users_db[user.username] = {
-        "username": user.username,
-        "email": user.email,
-        "hashed_password": hashed_password
+# ---------------------------------------------------------------------------
+# Almacenamiento temporal en memoria
+# Reemplazar con SQLAlchemy + PostgreSQL en Fase 2
+# ---------------------------------------------------------------------------
+_users_db: dict[str, dict] = {}  # email → {id, username, email, hashed_password}
+
+
+@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+async def register(credentials: RegisterCredentials):
+    if credentials.password != credentials.confirmPassword:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
+
+    if credentials.email in _users_db:
+        raise HTTPException(status_code=409, detail="El email ya está registrado")
+
+    user_id = str(uuid.uuid4())
+    _users_db[credentials.email] = {
+        "id": user_id,
+        "username": credentials.username,
+        "email": credentials.email,
+        "hashed_password": hash_password(credentials.password),
     }
-    return UserResponse(username=user.username, email=user.email)
 
-@router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = users_db.get(form_data.username)
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
+    token = create_access_token(subject=credentials.email)
+    return AuthResponse(
+        user=UserOut(id=user_id, email=credentials.email, username=credentials.username),
+        token=token,
+    )
+
+
+@router.post("/login", response_model=AuthResponse)
+async def login(credentials: LoginCredentials):
+    user = _users_db.get(credentials.email)
+    if not user or not verify_password(credentials.password, user["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Email o contraseña incorrectos",
         )
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["username"]}, expires_delta=access_token_expires
+
+    token = create_access_token(subject=credentials.email)
+    return AuthResponse(
+        user=UserOut(id=user["id"], email=user["email"], username=user["username"]),
+        token=token,
     )
-    return {"access_token": access_token, "token_type": "bearer"}
