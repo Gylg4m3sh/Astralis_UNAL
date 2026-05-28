@@ -2,6 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import auth, exoplanets, iss, simulation
+from app.core.database import Base, engine
+from app.models import user  
+
+# Crea las tablas si no existen
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="ASTRALIS API",
