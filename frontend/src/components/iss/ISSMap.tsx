@@ -1,113 +1,107 @@
-import { useRef, useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import type { ISSPosition } from '../../types'
+
+// SVG de la ISS como icono
+const issSVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48">
+  <!-- Cuerpo central -->
+  <rect x="26" y="28" width="12" height="8" rx="2" fill="#a5b4fc" stroke="#6366f1" stroke-width="1.5"/>
+  <!-- Módulo central -->
+  <rect x="29" y="24" width="6" height="16" rx="1.5" fill="#c7d2fe" stroke="#6366f1" stroke-width="1"/>
+  <!-- Paneles solares izquierda -->
+  <rect x="4" y="26" width="18" height="5" rx="1" fill="#1e3a5f" stroke="#6366f1" stroke-width="1"/>
+  <rect x="4" y="33" width="18" height="5" rx="1" fill="#1e3a5f" stroke="#6366f1" stroke-width="1"/>
+  <!-- Paneles solares derecha -->
+  <rect x="42" y="26" width="18" height="5" rx="1" fill="#1e3a5f" stroke="#6366f1" stroke-width="1"/>
+  <rect x="42" y="33" width="18" height="5" rx="1" fill="#1e3a5f" stroke="#6366f1" stroke-width="1"/>
+  <!-- Conectores paneles -->
+  <rect x="22" y="29.5" width="5" height="1.5" fill="#6366f1"/>
+  <rect x="22" y="33" width="5" height="1.5" fill="#6366f1"/>
+  <rect x="37" y="29.5" width="5" height="1.5" fill="#6366f1"/>
+  <rect x="37" y="33" width="5" height="1.5" fill="#6366f1"/>
+  <!-- Panel superior -->
+  <rect x="29" y="14" width="6" height="10" rx="1" fill="#1e3a5f" stroke="#6366f1" stroke-width="1"/>
+  <!-- Panel inferior -->
+  <rect x="29" y="40" width="6" height="10" rx="1" fill="#1e3a5f" stroke="#6366f1" stroke-width="1"/>
+  <!-- Glow central -->
+  <circle cx="32" cy="32" r="5" fill="rgba(99,102,241,0.3)"/>
+</svg>`
+
+const issIcon = L.divIcon({
+  html: `<div style="filter: drop-shadow(0 0 8px rgba(99,102,241,0.9)) drop-shadow(0 0 16px rgba(99,102,241,0.5));">
+    ${issSVG}
+  </div>`,
+  iconSize: [48, 48],
+  iconAnchor: [24, 24],
+  className: '',
+})
+
+// Componente que centra el mapa en la ISS suavemente
+const MapFollower = ({ position }: { position: ISSPosition }) => {
+  const map = useMap()
+  const firstRender = useRef(true)
+
+  useEffect(() => {
+    if (firstRender.current) {
+      map.setView([position.latitude, position.longitude], 3)
+      firstRender.current = false
+    } else {
+      map.panTo([position.latitude, position.longitude], { animate: true, duration: 1 })
+    }
+  }, [position.latitude, position.longitude])
+
+  return null
+}
 
 interface Props {
   position: ISSPosition | null
   history: [number, number][]
 }
 
-// Proyección equirectangular: lat/lng → px
-const project = (lat: number, lng: number, w: number, h: number) => ({
-  x: ((lng + 180) / 360) * w,
-  y: ((90 - lat) / 180) * h,
-})
-
 const ISSMap = ({ position, history }: Props) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const W = canvas.width
-    const H = canvas.height
-
-    ctx.clearRect(0, 0, W, H)
-
-    // Fondo
-    ctx.fillStyle = '#07071a'
-    ctx.fillRect(0, 0, W, H)
-
-    // Grid de meridianos y paralelos
-    ctx.strokeStyle = 'rgba(99,102,241,0.08)'
-    ctx.lineWidth = 0.5
-    for (let lng = -180; lng <= 180; lng += 30) {
-      const x = ((lng + 180) / 360) * W
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
-    }
-    for (let lat = -90; lat <= 90; lat += 30) {
-      const y = ((90 - lat) / 180) * H
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
-    }
-
-    // Ecuador y meridiano central destacados
-    ctx.strokeStyle = 'rgba(99,102,241,0.2)'
-    ctx.lineWidth = 1
-    const eqY = H / 2
-    ctx.beginPath(); ctx.moveTo(0, eqY); ctx.lineTo(W, eqY); ctx.stroke()
-    const merX = W / 2
-    ctx.beginPath(); ctx.moveTo(merX, 0); ctx.lineTo(merX, H); ctx.stroke()
-
-    // Trail
-    if (history.length > 1) {
-      for (let i = 1; i < history.length; i++) {
-        const prev = project(history[i-1][0], history[i-1][1], W, H)
-        const curr = project(history[i][0], history[i][1], W, H)
-        const alpha = i / history.length
-        // No dibujar si cruza el antimeridiano
-        if (Math.abs(history[i][1] - history[i-1][1]) > 180) continue
-        ctx.beginPath()
-        ctx.moveTo(prev.x, prev.y)
-        ctx.lineTo(curr.x, curr.y)
-        ctx.strokeStyle = `rgba(99,102,241,${alpha * 0.7})`
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-      }
-    }
-
-    // ISS
-    if (position) {
-      const { x, y } = project(position.latitude, position.longitude, W, H)
-
-      // Glow rings
-      ;[40, 25, 14].forEach((r, i) => {
-        ctx.beginPath()
-        ctx.arc(x, y, r, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(99,102,241,${0.08 + i * 0.06})`
-        ctx.lineWidth = 1
-        ctx.stroke()
-      })
-
-      // Punto ISS
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, 8)
-      grad.addColorStop(0, '#fff')
-      grad.addColorStop(0.4, '#a5b4fc')
-      grad.addColorStop(1, 'transparent')
-      ctx.beginPath()
-      ctx.arc(x, y, 8, 0, Math.PI * 2)
-      ctx.fillStyle = grad
-      ctx.fill()
-
-      // Label
-      ctx.fillStyle = 'rgba(165,180,252,0.9)'
-      ctx.font = '11px monospace'
-      ctx.fillText('ISS', x + 12, y - 8)
-      ctx.fillStyle = 'rgba(148,163,184,0.7)'
-      ctx.font = '10px monospace'
-      ctx.fillText(`${position.latitude.toFixed(2)}° ${position.longitude.toFixed(2)}°`, x + 12, y + 6)
-    }
-
-  }, [position, history])
+  if (!position) return null
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={900}
-      height={450}
-      style={{ borderRadius: '12px', display: 'block', width: '100%', height: 'auto' }}
-    />
+    <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+      <MapContainer
+        center={[position.latitude, position.longitude]}
+        zoom={3}
+        style={{ height: '500px', width: '100%', background: '#07071a' }}
+        zoomControl={true}
+        scrollWheelZoom={true}
+      >
+        {/* Dark tiles — CartoDB Dark Matter */}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          subdomains="abcd"
+        />
+
+        {/* Trail de la órbita */}
+        {history.length > 1 && (
+          <Polyline
+            positions={history}
+            pathOptions={{
+              color: '#6366f1',
+              weight: 2,
+              opacity: 0.6,
+              dashArray: '6 4',
+            }}
+          />
+        )}
+
+        {/* Marcador ISS */}
+        <Marker
+          position={[position.latitude, position.longitude]}
+          icon={issIcon}
+        />
+
+        {/* Seguidor de posición */}
+        <MapFollower position={position} />
+      </MapContainer>
+    </div>
   )
 }
 

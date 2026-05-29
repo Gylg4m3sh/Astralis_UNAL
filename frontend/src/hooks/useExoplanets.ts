@@ -26,7 +26,7 @@ export const useExoplanets = ({
     setLoading(true);
     setError(null);
     try {
-      const result = await exoplanetService.getAll(page, filter);
+      const result = await exoplanetService.getAll(page, filter, 50);
       setData(result);
     } catch (e) {
       setError("Error cargando exoplanetas");

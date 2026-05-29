@@ -1,16 +1,21 @@
 import uuid
-from fastapi import APIRouter, HTTPException, status, Depends
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.user import User
 from app.schemas.index import LoginCredentials, RegisterCredentials, AuthResponse, UserOut
 
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def register(credentials: RegisterCredentials, db: Session = Depends(get_db)):
+@limiter.limit("3/minute") # maximo 3 registros por minuto por IP 
+async def register(request: Request, credentials: RegisterCredentials, db: Session = Depends(get_db)):
     if credentials.password != credentials.confirmPassword:
         raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
 
@@ -36,7 +41,8 @@ async def register(credentials: RegisterCredentials, db: Session = Depends(get_d
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(credentials: LoginCredentials, db: Session = Depends(get_db)):
+@limiter.limit("5/minute") # maximo 5 intentos de login por minuto por IP 
+async def login(request: Request, credentials: LoginCredentials, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == credentials.email).first()
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(

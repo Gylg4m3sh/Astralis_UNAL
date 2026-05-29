@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 /* ── Variables globales ── */
 :root {
@@ -13,12 +14,16 @@
   --color-confirmed: #4ade80;
   --color-candidate: #facc15;
   --color-false-positive: #f87171;
-  --font-display: 'Orbitron', sans-serif;
-  --font-body: 'Space Mono', monospace;
+  --font-display: "Orbitron", sans-serif;
+  --font-body: "Space Mono", monospace;
 }
 
 /* ── Reset base ── */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   background-color: var(--color-void);
@@ -29,44 +34,94 @@ body {
 }
 
 /* ── Fuentes ── */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 
 /* ── Fondo estrellado global ── */
 body::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   background-image:
-    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
-    radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 90% 40%, rgba(255,255,255,0.6) 0%, transparent 100%),
-    radial-gradient(1px 1px at 20% 90%, rgba(255,255,255,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 50%, rgba(255,255,255,0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 80% 15%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 45% 75%, rgba(255,255,255,0.6) 0%, transparent 100%),
-    radial-gradient(1px 1px at 15% 45%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    radial-gradient(
+      1px 1px at 10% 20%,
+      rgba(255, 255, 255, 0.6) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 30% 60%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 50% 10%,
+      rgba(255, 255, 255, 0.5) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 70% 80%,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 90% 40%,
+      rgba(255, 255, 255, 0.6) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 20% 90%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 60% 50%,
+      rgba(255, 255, 255, 0.5) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 80% 15%,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 45% 75%,
+      rgba(255, 255, 255, 0.6) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 15% 45%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    );
   pointer-events: none;
   z-index: 0;
 }
 
 /* ── Glow effects ── */
 .glow-accent {
-  box-shadow: 0 0 20px var(--color-accent-glow), 0 0 40px var(--color-accent-glow);
+  box-shadow:
+    0 0 20px var(--color-accent-glow),
+    0 0 40px var(--color-accent-glow);
 }
 
 .glow-text {
-  text-shadow: 0 0 20px var(--color-accent), 0 0 40px var(--color-accent-glow);
+  text-shadow:
+    0 0 20px var(--color-accent),
+    0 0 40px var(--color-accent-glow);
 }
 
-.glow-confirmed { box-shadow: 0 0 12px #4ade8044; }
-.glow-candidate { box-shadow: 0 0 12px #facc1544; }
-.glow-false-positive { box-shadow: 0 0 12px #f8717144; }
+.glow-confirmed {
+  box-shadow: 0 0 12px #4ade8044;
+}
+.glow-candidate {
+  box-shadow: 0 0 12px #facc1544;
+}
+.glow-false-positive {
+  box-shadow: 0 0 12px #f8717144;
+}
 
 /* ── Scanline effect (opcional, para el simulador) ── */
 .scanlines::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
@@ -82,18 +137,33 @@ body::before {
 
 /* ── Animaciones ── */
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes orbit-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in-up {
@@ -105,7 +175,16 @@ body::before {
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--color-deep); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}

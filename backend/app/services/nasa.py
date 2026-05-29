@@ -93,6 +93,8 @@ def _load_df() -> pd.DataFrame:
     # Eliminar filas con datos críticos faltantes
     df = df.dropna(subset=["orbitalPeriod", "planetRadius"])
 
+    # Eliminar duplicados por id — el CSV Kepler puede tener múltiples filas por objeto
+    df = df.drop_duplicates(subset=["id"])
     # Rellenar equilibriumTemp faltante con 0 (el frontend puede manejarlo)
     df["equilibriumTemp"] = df["equilibriumTemp"].fillna(0)
 

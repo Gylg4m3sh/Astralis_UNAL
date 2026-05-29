@@ -53,6 +53,7 @@ export const exoplanetService = {
   getAll: async (
     page = 1,
     filter?: string,
+    pageSize = 50,
   ): Promise<PaginatedResponse<Exoplanet>> => {
     if (USE_MOCKS) {
       const filtered = filter
@@ -61,7 +62,7 @@ export const exoplanetService = {
       return { data: filtered, total: filtered.length, page, pageSize: 10 };
     }
     const { data } = await apiClient.get("/api/exoplanets", {
-      params: { page, filter },
+      params: { page, filter, pageSize },
     });
     return data;
   },
