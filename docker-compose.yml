@@ -1,21 +1,6 @@
-services:
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: astralis
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d astralis"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+version: '3.8'
 
+services:
   backend:
     build:
       context: ./backend
@@ -24,14 +9,9 @@ services:
       - "8000:8000"
     environment:
       - ENV=development
-      - DATABASE_URL=postgresql://user:password@db:5432/astralis
-      - FRONTEND_URL=http://localhost:8080
-      - SECRET_KEY=dev_secret_cambia_en_produccion
     volumes:
       - ./backend:/app
-    depends_on:
-      db:
-        condition: service_healthy
+      - /app/requirements.txt
     restart: always
 
   frontend:
@@ -41,6 +21,3 @@ services:
     ports:
       - "8080:80"
     restart: always
-
-volumes:
-  postgres_data:

@@ -274,7 +274,7 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fillStyle = core; ctx.fill()
     }
 
-    const drawTrail = (planet: PlanetData, trail: [number, number][], cx: number, cy: number) => {
+    const drawTrail = (planet: PlanetData, trail: [number, number][], cx: number, cy: number, zoom: number) => {
       if (trail.length < 2) return
       for (let i = 1; i < trail.length; i++) {
         const alpha = (i / trail.length) * 0.6
@@ -361,7 +361,7 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
         positionsRef.current[planet.id] = { x, y }
         const trail = trailsRef.current[planet.id]
         if (!pausedRef.current) { trail.push([x, y]); if (trail.length > TRAIL_LENGTH) trail.shift() }
-        drawTrail(planet, trail, cx, cy)
+        drawTrail(planet, trail, cx, cy, zoom)
         drawPlanet(planet, x, y, cx, cy, zoom)
       })
 
