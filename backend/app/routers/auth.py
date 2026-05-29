@@ -1,39 +1,57 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from app.models import Token, UserCreate, UserResponse
-from app.security import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from datetime import timedelta
+import uuid
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from fastapi import APIRouter, HTTPException, status, Depends, Request
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.core.security import hash_password, verify_password, create_access_token
+from app.models.user import User
+from app.schemas.index import LoginCredentials, RegisterCredentials, AuthResponse, UserOut
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+limiter = Limiter(key_func=get_remote_address)
 
-# Mock DB
-users_db = {}
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate):
-    if user.username in users_db:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    
-    hashed_password = get_password_hash(user.password)
-    users_db[user.username] = {
-        "username": user.username,
-        "email": user.email,
-        "hashed_password": hashed_password
-    }
-    return UserResponse(username=user.username, email=user.email)
 
-@router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = users_db.get(form_data.username)
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
+@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("3/minute") # maximo 3 registros por minuto por IP 
+async def register(request: Request, credentials: RegisterCredentials, db: Session = Depends(get_db)):
+    if credentials.password != credentials.confirmPassword:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
+
+    existing = db.query(User).filter(User.email == credentials.email).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="El email ya está registrado")
+
+    user = User(
+        id=str(uuid.uuid4()),
+        username=credentials.username,
+        email=credentials.email,
+        hashed_password=hash_password(credentials.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(subject=user.email)
+    return AuthResponse(
+        user=UserOut(id=user.id, email=user.email, username=user.username),
+        token=token,
+    )
+
+
+@router.post("/login", response_model=AuthResponse)
+@limiter.limit("5/minute") # maximo 5 intentos de login por minuto por IP 
+async def login(request: Request, credentials: LoginCredentials, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == credentials.email).first()
+    if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Email o contraseña incorrectos",
         )
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["username"]}, expires_delta=access_token_expires
+
+    token = create_access_token(subject=user.email)
+    return AuthResponse(
+        user=UserOut(id=user.id, email=user.email, username=user.username),
+        token=token,
     )
-    return {"access_token": access_token, "token_type": "bearer"}
