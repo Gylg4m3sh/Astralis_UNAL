@@ -6,7 +6,9 @@ import type {
   PaginatedResponse,
 } from "../types";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// In Docker: VITE_API_URL is empty so we use relative paths — nginx proxies /api/* to backend.
+// In local dev: VITE_API_URL=http://localhost:8000 from .env
+const BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

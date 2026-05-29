@@ -40,7 +40,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    depends_on:
+      - backend
     restart: always
+
+volumes:
+  postgres_data:
 
 volumes:
   postgres_data:

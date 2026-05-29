@@ -84,29 +84,29 @@ const buildNebula = (W: number, H: number): HTMLCanvasElement => {
   nCtx.fillStyle = '#03030f'
   nCtx.fillRect(0, 0, W, H)
   const clouds = [
-    { x: W*0.15, y: H*0.25, r: W*0.22, color: 'rgba(99,102,241,0.05)' },
-    { x: W*0.85, y: H*0.75, r: W*0.25, color: 'rgba(139,92,246,0.04)' },
-    { x: W*0.50, y: H*0.08, r: W*0.18, color: 'rgba(59,130,246,0.04)' },
-    { x: W*0.05, y: H*0.85, r: W*0.20, color: 'rgba(99,102,241,0.03)' },
-    { x: W*0.92, y: H*0.15, r: W*0.17, color: 'rgba(167,139,250,0.04)' },
+    { x: W * 0.15, y: H * 0.25, r: W * 0.22, color: 'rgba(99,102,241,0.05)' },
+    { x: W * 0.85, y: H * 0.75, r: W * 0.25, color: 'rgba(139,92,246,0.04)' },
+    { x: W * 0.50, y: H * 0.08, r: W * 0.18, color: 'rgba(59,130,246,0.04)' },
+    { x: W * 0.05, y: H * 0.85, r: W * 0.20, color: 'rgba(99,102,241,0.03)' },
+    { x: W * 0.92, y: H * 0.15, r: W * 0.17, color: 'rgba(167,139,250,0.04)' },
   ]
   clouds.forEach(({ x, y, r, color }) => {
     const g = nCtx.createRadialGradient(x, y, 0, x, y, r)
     g.addColorStop(0, color); g.addColorStop(1, 'transparent')
     nCtx.fillStyle = g
-    nCtx.beginPath(); nCtx.arc(x, y, r, 0, Math.PI*2); nCtx.fill()
+    nCtx.beginPath(); nCtx.arc(x, y, r, 0, Math.PI * 2); nCtx.fill()
   })
   for (let i = 0; i < 300; i++) {
-    const sx = Math.random()*W, sy = Math.random()*H
-    const sr = Math.random()*1.2+0.2, op = Math.random()*0.8+0.2
-    nCtx.beginPath(); nCtx.arc(sx, sy, sr, 0, Math.PI*2)
+    const sx = Math.random() * W, sy = Math.random() * H
+    const sr = Math.random() * 1.2 + 0.2, op = Math.random() * 0.8 + 0.2
+    nCtx.beginPath(); nCtx.arc(sx, sy, sr, 0, Math.PI * 2)
     nCtx.fillStyle = `rgba(255,255,255,${op})`; nCtx.fill()
   }
   for (let i = 0; i < 15; i++) {
-    const sx = Math.random()*W, sy = Math.random()*H
+    const sx = Math.random() * W, sy = Math.random() * H
     const sg = nCtx.createRadialGradient(sx, sy, 0, sx, sy, 3)
     sg.addColorStop(0, 'rgba(255,255,255,0.9)'); sg.addColorStop(1, 'transparent')
-    nCtx.fillStyle = sg; nCtx.beginPath(); nCtx.arc(sx, sy, 3, 0, Math.PI*2); nCtx.fill()
+    nCtx.fillStyle = sg; nCtx.beginPath(); nCtx.arc(sx, sy, 3, 0, Math.PI * 2); nCtx.fill()
   }
   return nc
 }
@@ -162,8 +162,8 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
       const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width)
       const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height)
       const { W, H } = sizeRef.current
-      const cx = W/2 + panRef.current.x
-      const cy = H/2 + panRef.current.y
+      const cx = W / 2 + panRef.current.x
+      const cy = H / 2 + panRef.current.y
 
       const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9
       const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * zoomFactor))
@@ -171,8 +171,8 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
       // Zoom hacia el cursor
       const scale = newZoom / zoomRef.current
       panRef.current = {
-        x: mouseX - (mouseX - cx) * scale - W/2,
-        y: mouseY - (mouseY - cy) * scale - H/2,
+        x: mouseX - (mouseX - cx) * scale - W / 2,
+        y: mouseY - (mouseY - cy) * scale - H / 2,
       }
       zoomRef.current = newZoom
     }
@@ -191,8 +191,8 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
       const mx = (e.clientX - rect.left) * (canvas.width / rect.width)
       const my = (e.clientY - rect.top) * (canvas.height / rect.height)
       const { W, H } = sizeRef.current
-      const cx = W/2 + panRef.current.x
-      const cy = H/2 + panRef.current.y
+      const cx = W / 2 + panRef.current.x
+      const cy = H / 2 + panRef.current.y
 
       if (draggingRef.current) {
         const dx = e.clientX - dragStartRef.current.x
@@ -230,8 +230,8 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
         const mx = (e.clientX - rect.left) * (canvas.width / rect.width)
         const my = (e.clientY - rect.top) * (canvas.height / rect.height)
         const { W, H } = sizeRef.current
-        const cx = W/2 + panRef.current.x
-        const cy = H/2 + panRef.current.y
+        const cx = W / 2 + panRef.current.x
+        const cy = H / 2 + panRef.current.y
         let clicked: PlanetData | null = null
         planetsRef.current.forEach(p => {
           const pos = positionsRef.current[p.id]
@@ -262,28 +262,28 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
 
     const drawSun = (cx: number, cy: number, zoom: number) => {
       const r = 18 * zoom
-      const corona = ctx.createRadialGradient(cx, cy, r, cx, cy, 60*zoom)
+      const corona = ctx.createRadialGradient(cx, cy, r, cx, cy, 60 * zoom)
       corona.addColorStop(0, 'rgba(255,180,0,0.15)'); corona.addColorStop(1, 'transparent')
-      ctx.beginPath(); ctx.arc(cx, cy, 60*zoom, 0, Math.PI*2); ctx.fillStyle = corona; ctx.fill()
-      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 30*zoom)
+      ctx.beginPath(); ctx.arc(cx, cy, 60 * zoom, 0, Math.PI * 2); ctx.fillStyle = corona; ctx.fill()
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 30 * zoom)
       glow.addColorStop(0, '#fff7aa'); glow.addColorStop(0.4, '#FDB813')
       glow.addColorStop(0.8, '#ff6600'); glow.addColorStop(1, 'transparent')
-      ctx.beginPath(); ctx.arc(cx, cy, 30*zoom, 0, Math.PI*2); ctx.fillStyle = glow; ctx.fill()
+      ctx.beginPath(); ctx.arc(cx, cy, 30 * zoom, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill()
       const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
       core.addColorStop(0, '#ffffff'); core.addColorStop(0.3, '#fff7aa'); core.addColorStop(1, '#FDB813')
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fillStyle = core; ctx.fill()
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = core; ctx.fill()
     }
 
     const drawTrail = (planet: PlanetData, trail: [number, number][], cx: number, cy: number) => {
       if (trail.length < 2) return
       for (let i = 1; i < trail.length; i++) {
         const alpha = (i / trail.length) * 0.6
-        const [x1, y1] = trail[i-1]; const [x2, y2] = trail[i]
-        if (Math.hypot(x2-x1, y2-y1) > planet.orbitRadius) continue
+        const [x1, y1] = trail[i - 1]; const [x2, y2] = trail[i]
+        if (Math.hypot(x2 - x1, y2 - y1) > planet.orbitRadius) continue
         const sx1 = cx + (x1 - cx), sy1 = cy + (y1 - cy)
         const sx2 = cx + (x2 - cx), sy2 = cy + (y2 - cy)
         ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2)
-        ctx.strokeStyle = `${planet.glowColor}${Math.floor(alpha*255).toString(16).padStart(2,'0')}`
+        ctx.strokeStyle = `${planet.glowColor}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`
         ctx.lineWidth = 1.5; ctx.stroke()
       }
     }
@@ -297,59 +297,59 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
       const scale = isHovered ? 1.3 : 1
 
       if (isHovered) {
-        ctx.beginPath(); ctx.arc(sx, sy, r*scale+8, 0, Math.PI*2)
+        ctx.beginPath(); ctx.arc(sx, sy, r * scale + 8, 0, Math.PI * 2)
         ctx.strokeStyle = `${planet.glowColor}99`; ctx.lineWidth = 1.5
-        ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([])
+        ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([])
       }
 
-      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r*scale*3)
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * scale * 3)
       glow.addColorStop(0, `${planet.glowColor}${isHovered ? '60' : '40'}`); glow.addColorStop(1, 'transparent')
-      ctx.beginPath(); ctx.arc(sx, sy, r*scale*3, 0, Math.PI*2); ctx.fillStyle = glow; ctx.fill()
+      ctx.beginPath(); ctx.arc(sx, sy, r * scale * 3, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill()
 
       if (planet.rings) {
         ctx.save(); ctx.translate(sx, sy); ctx.scale(1, 0.3)
-        ctx.beginPath(); ctx.arc(0, 0, r*scale*2.4, 0, Math.PI*2)
-        ctx.strokeStyle = 'rgba(232,213,163,0.5)'; ctx.lineWidth = 4*zoom; ctx.stroke()
-        ctx.beginPath(); ctx.arc(0, 0, r*scale*2.0, 0, Math.PI*2)
-        ctx.strokeStyle = 'rgba(232,213,163,0.3)'; ctx.lineWidth = 3*zoom; ctx.stroke()
+        ctx.beginPath(); ctx.arc(0, 0, r * scale * 2.4, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(232,213,163,0.5)'; ctx.lineWidth = 4 * zoom; ctx.stroke()
+        ctx.beginPath(); ctx.arc(0, 0, r * scale * 2.0, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(232,213,163,0.3)'; ctx.lineWidth = 3 * zoom; ctx.stroke()
         ctx.restore()
       }
 
-      const lightX = sx - Math.cos(angle)*r*scale*0.3
-      const lightY = sy - Math.sin(angle)*r*scale*0.3
-      const body = ctx.createRadialGradient(lightX, lightY, 0, sx, sy, r*scale)
+      const lightX = sx - Math.cos(angle) * r * scale * 0.3
+      const lightY = sy - Math.sin(angle) * r * scale * 0.3
+      const body = ctx.createRadialGradient(lightX, lightY, 0, sx, sy, r * scale)
       body.addColorStop(0, planet.glowColor); body.addColorStop(0.5, planet.color)
       body.addColorStop(1, `${planet.color}88`)
-      ctx.beginPath(); ctx.arc(sx, sy, r*scale, 0, Math.PI*2); ctx.fillStyle = body; ctx.fill()
+      ctx.beginPath(); ctx.arc(sx, sy, r * scale, 0, Math.PI * 2); ctx.fillStyle = body; ctx.fill()
 
       const shadow = ctx.createRadialGradient(
-        sx+Math.cos(angle)*r*scale*0.5, sy+Math.sin(angle)*r*scale*0.5,
-        0, sx, sy, r*scale
+        sx + Math.cos(angle) * r * scale * 0.5, sy + Math.sin(angle) * r * scale * 0.5,
+        0, sx, sy, r * scale
       )
       shadow.addColorStop(0, 'transparent'); shadow.addColorStop(0.6, 'transparent')
       shadow.addColorStop(1, 'rgba(0,0,0,0.6)')
-      ctx.beginPath(); ctx.arc(sx, sy, r*scale, 0, Math.PI*2); ctx.fillStyle = shadow; ctx.fill()
+      ctx.beginPath(); ctx.arc(sx, sy, r * scale, 0, Math.PI * 2); ctx.fillStyle = shadow; ctx.fill()
 
       ctx.fillStyle = isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.55)'
-      ctx.font = `${Math.max(9, 10*zoom)}px monospace`
-      ctx.fillText(planet.name, sx + r*scale + 5, sy + 4)
+      ctx.font = `${Math.max(9, 10 * zoom)}px monospace`
+      ctx.fillText(planet.name, sx + r * scale + 5, sy + 4)
     }
 
     const draw = () => {
       const { W, H } = sizeRef.current
       if (!W || !H) { animRef.current = requestAnimationFrame(draw); return }
       const zoom = zoomRef.current
-      const cx = W/2 + panRef.current.x
-      const cy = H/2 + panRef.current.y
+      const cx = W / 2 + panRef.current.x
+      const cy = H / 2 + panRef.current.y
 
       ctx.clearRect(0, 0, W, H)
       if (nebulaRef.current) ctx.drawImage(nebulaRef.current, 0, 0)
 
       // Órbitas escaladas
       planetsRef.current.forEach(p => {
-        ctx.beginPath(); ctx.arc(cx, cy, p.orbitRadius * zoom, 0, Math.PI*2)
+        ctx.beginPath(); ctx.arc(cx, cy, p.orbitRadius * zoom, 0, Math.PI * 2)
         ctx.strokeStyle = 'rgba(99,102,241,0.12)'; ctx.lineWidth = 1
-        ctx.setLineDash([3,6]); ctx.stroke(); ctx.setLineDash([])
+        ctx.setLineDash([3, 6]); ctx.stroke(); ctx.setLineDash([])
       })
 
       drawSun(cx, cy, zoom)

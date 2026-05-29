@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchISSPosition } from '../services/iss'
+import { issService } from '../services/api'
 import type { ISSPosition } from '../types'
 
 interface UseISSReturn {
@@ -20,7 +20,7 @@ export const useISS = (intervalMs = 5000): UseISSReturn => {
 
   const fetch = async () => {
     try {
-      const pos = await fetchISSPosition()
+      const pos = await issService.getPosition()
       setPosition(pos)
       setHistory(prev => {
         const next = [...prev, [pos.latitude, pos.longitude] as [number, number]]

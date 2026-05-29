@@ -6,10 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/iss-api': {
-        target: 'http://api.open-notify.org',
+      // Proxy /api/* to the backend (local dev)
+      '/api': {
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: path => path.replace(/^\/iss-api/, ''),
       },
     },
   },

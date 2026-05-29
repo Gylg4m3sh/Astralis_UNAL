@@ -38,6 +38,33 @@ const issIcon = L.divIcon({
   className: '',
 })
 
+/**
+ * Splits a flat array of [lat, lng] points into multiple segments,
+ * breaking whenever the ISS crosses the antimeridian (longitude diff > 180°).
+ * This prevents Leaflet from drawing a line all the way across the map.
+ */
+function splitTrailAtAntimeridian(history: [number, number][]): [number, number][][] {
+  if (history.length < 2) return history.length === 1 ? [history] : []
+
+  const segments: [number, number][][] = []
+  let current: [number, number][] = [history[0]]
+
+  for (let i = 1; i < history.length; i++) {
+    const [, prevLng] = history[i - 1]
+    const [lat, lng] = history[i]
+    // If longitude jumps more than 180°, it crossed the antimeridian — start a new segment
+    if (Math.abs(lng - prevLng) > 180) {
+      if (current.length >= 2) segments.push(current)
+      current = [[lat, lng]]
+    } else {
+      current.push([lat, lng])
+    }
+  }
+  if (current.length >= 2) segments.push(current)
+
+  return segments
+}
+
 // Componente que centra el mapa en la ISS suavemente
 const MapFollower = ({ position }: { position: ISSPosition }) => {
   const map = useMap()
@@ -63,6 +90,8 @@ interface Props {
 const ISSMap = ({ position, history }: Props) => {
   if (!position) return null
 
+  const trailSegments = splitTrailAtAntimeridian(history)
+
   return (
     <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
       <MapContainer
@@ -79,10 +108,11 @@ const ISSMap = ({ position, history }: Props) => {
           subdomains="abcd"
         />
 
-        {/* Trail de la órbita */}
-        {history.length > 1 && (
+        {/* Trail de la órbita — split at antimeridian to avoid cross-map lines */}
+        {trailSegments.map((segment, idx) => (
           <Polyline
-            positions={history}
+            key={idx}
+            positions={segment}
             pathOptions={{
               color: '#6366f1',
               weight: 2,
@@ -90,7 +120,7 @@ const ISSMap = ({ position, history }: Props) => {
               dashArray: '6 4',
             }}
           />
-        )}
+        ))}
 
         {/* Marcador ISS */}
         <Marker
