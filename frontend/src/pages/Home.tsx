@@ -170,7 +170,7 @@ const Home = () => {
           }}
         >
           Plataforma de simulación, visualización y predicción de fenómenos
-          astronómicos con datos reales de la NASA.
+          astronómicos
         </p>
 
         <p
