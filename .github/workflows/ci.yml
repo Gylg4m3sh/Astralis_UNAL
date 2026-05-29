@@ -27,9 +27,16 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install flake8 pytest pytest-cov
 
-    - name: Run tests
-      run: PYTHONPATH=. pytest
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run tests with coverage
+      run: |
+        PYTHONPATH=. pytest --cov=. --cov-fail-under=60
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -51,5 +58,29 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Run lint
+      run: npm run lint
+
     - name: Run build
       run: npm run build
+
+  docker-build:
+    needs: [backend-tests, frontend-build]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build Backend Docker Image
+      run: docker build -t astralis-backend:latest ./backend
+
+    - name: Build Frontend Docker Image
+      run: docker build -t astralis-frontend:latest ./frontend
+
+  deploy-staging:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Deploy to Staging Placeholder
+      run: echo "Deploying to staging environment (simulated)..."
