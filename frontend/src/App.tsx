@@ -21,8 +21,6 @@ const NavBar = () => {
       background: 'var(--color-deep)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-
-
         <span style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,
           fontSize: '1.1rem', letterSpacing: '0.3em', color: 'var(--color-accent)',
