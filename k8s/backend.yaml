@@ -32,6 +32,12 @@ spec:
               value: "development"
             - name: FRONTEND_URL
               value: "http://localhost:8080"
+            - name: ML_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: astralis-config
+                  key: ml-service-url
+
 ---
 apiVersion: v1
 kind: Service

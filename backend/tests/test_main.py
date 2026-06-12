@@ -6,4 +6,7 @@ client = TestClient(app)
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "astralis-backend"}
+    res = response.json()
+    assert res["status"] == "ok"
+    assert res["service"] == "astralis-backend"
+    assert "ml_service" in res

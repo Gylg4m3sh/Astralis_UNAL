@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+
+# Modelos serializados (se generan automáticamente al arrancar el servicio)
+models/*.joblib

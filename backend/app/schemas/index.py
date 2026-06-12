@@ -83,3 +83,48 @@ class RegisterCredentials(BaseModel):
     email: EmailStr
     password: str
     confirmPassword: str
+
+
+# ---------------------------------------------------------------------------
+# Integración con el microservicio ML (E3)
+# ---------------------------------------------------------------------------
+class MLFeatures(BaseModel):
+    """
+    Features astronómicas de un candidato Kepler, espejo de
+    `ExoplanetFeatures` en ml_service/app/schemas.py. Todas son opcionales:
+    el microservicio ML imputa los valores faltantes con la mediana del
+    set de entrenamiento.
+    """
+    koi_period: Optional[float] = None
+    koi_prad: Optional[float] = None
+    koi_teq: Optional[float] = None
+    koi_insol: Optional[float] = None
+    koi_steff: Optional[float] = None
+    koi_slogg: Optional[float] = None
+    koi_srad: Optional[float] = None
+    koi_smass: Optional[float] = None
+    koi_duration: Optional[float] = None
+    koi_depth: Optional[float] = None
+    koi_impact: Optional[float] = None
+    koi_incl: Optional[float] = None
+
+
+class MLPrediction(BaseModel):
+    """Respuesta de clasificación del microservicio ML, vista desde E1."""
+    classification: Literal["CONFIRMED", "FALSE_POSITIVE", "CANDIDATE"]
+    mlConfidence: float
+    probConfirmed: Optional[float] = None
+    probFalsePos: Optional[float] = None
+    probCandidate: Optional[float] = None
+    model_version: Optional[str] = None
+    features_used: Optional[int] = None
+
+
+class MLStatus(BaseModel):
+    """Estado del microservicio ML, usado en /health del backend."""
+    available: bool
+    model_loaded: bool
+    model_version: Optional[str] = None
+    accuracy: Optional[float] = None
+    f1_score: Optional[float] = None
+

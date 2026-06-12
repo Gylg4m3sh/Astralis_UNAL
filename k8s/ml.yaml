@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: astralis-ml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: astralis-ml
+  template:
+    metadata:
+      labels:
+        app: astralis-ml
+    spec:
+      containers:
+        - name: ml
+          image: astralis-ml:latest
+          ports:
+            - containerPort: 8001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: astralis-ml
+spec:
+  ports:
+    - port: 8001
+  selector:
+    app: astralis-ml

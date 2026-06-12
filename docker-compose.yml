@@ -29,11 +29,24 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/astralis
       - FRONTEND_URL=http://localhost:8080
       - SECRET_KEY=dev_secret_cambia_en_produccion
+      - ML_SERVICE_URL=http://ml:8001
     volumes:
       - ./backend:/app
     depends_on:
       db:
         condition: service_healthy
+      ml:
+        condition: service_started
+    restart: always
+
+  ml:
+    build:
+      context: ./ml_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ml_service:/app
     restart: always
 
   frontend:
@@ -44,6 +57,7 @@ services:
       - "8080:80"
     depends_on:
       - backend
+      - ml
     restart: always
 
 volumes:

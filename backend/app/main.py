@@ -9,7 +9,9 @@ from app.core.database import Base, engine, SessionLocal
 from app.models.user import User
 from app.core.security import hash_password
 from app.routers import auth, exoplanets, iss, simulation
+from app.services import ml_client
 import uuid
+
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -75,4 +77,5 @@ app.include_router(simulation.router)
 
 @app.get("/health", tags=["meta"])
 async def health():
-    return {"status": "ok", "service": "astralis-backend"}
+    ml_status = await ml_client.ml_service_healthy()
+    return {"status": "ok", "service": "astralis-backend", "ml_service": ml_status}
