@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: astralis-config
+data:
+  env: "development"
+  frontend-url: "http://localhost:8080"
