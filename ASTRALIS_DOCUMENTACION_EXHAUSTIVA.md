@@ -169,61 +169,32 @@ El rol de Ciencia de Datos fundamenta científicamente el proyecto mediante la s
 ---
 
 ## 4. 💻 Rol E4: Frontend & Visualización Engineer
-El frontend es la cara interactiva de Astralis, centrado en visualizaciones de alta fidelidad estética y rendimiento dinámico en tiempo real.
-
-### 🌟 Funcionalidades Interesantes & Implementaciones de Código
-
-#### A. Simulador Orbital 2D de Alto Rendimiento en HTML5 Canvas
-*Archivo:* [OrbitalCanvas.tsx](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/frontend/src/components/orbital/OrbitalCanvas.tsx)
-
-En lugar de utilizar complejas librerías 3D de alto impacto en memoria, se desarrolló un simulador orbital optimizado usando la API nativa de Canvas 2D de HTML5.
-*   **Estrellas de Fondo y Nebulosas Dinámicas:** Generación procedural de estrellas y nubes de gas en un lienzo *Nebula* secundario en caché para mejorar los cuadros por segundo (FPS).
-*   **Interactividad con Cámara Física:** Soporte para arrastre de cámara (Pan) y zoom hacia el cursor del mouse, lo cual permite desplazarse libremente a lo largo del sistema solar:
-
-```typescript
-const handleWheel = (e: WheelEvent) => {
-  e.preventDefault()
-  const rect = canvas.getBoundingClientRect()
-  const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width)
-  const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height)
-  
-  const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9
-  const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * zoomFactor))
-
-  // Escalamiento relativo con respecto a la posición del cursor
-  const scale = newZoom / zoomRef.current
-  panRef.current = {
-    x: mouseX - (mouseX - (sizeRef.current.W / 2 + panRef.current.x)) * scale - sizeRef.current.W / 2,
-    y: mouseY - (mouseY - (sizeRef.current.H / 2 + panRef.current.y)) * scale - sizeRef.current.H / 2,
-  }
-  zoomRef.current = newZoom
-}
-```
-
-#### B. Mecanismo de Escala Real de Unidades Astronómicas (AU)
-El lienzo calcula el radio de la órbita de los planetas en función de su distancia física real en AU multiplicada por un factor de escala ajustable. 
-*   Para acomodar la inmensidad del sistema solar exterior (Pluto a $39.48\text{ AU}$ frente a Mercurio a $0.39\text{ AU}$), se habilitaron límites de zoom extremos (`MIN_ZOOM = 0.02`, `MAX_ZOOM = 15`).
-*   Al activar la **Escala Real**, se vacía el rastro orbital (trail) para prevenir saltos gráficos molestos en la pantalla del usuario:
-
-```typescript
-useEffect(() => {
-  const scaleFactor = 150
-  planetsRef.current.forEach(p => {
-    const original = PLANETS.find(orig => orig.id === p.id)
-    if (original) {
-      p.orbitRadius = realScale 
-        ? original.distanceAU * scaleFactor 
-        : original.orbitRadius
-    }
-  })
-  // Reseteo de trails
-  Object.keys(trailsRef.current).forEach(k => {
-    trailsRef.current[k] = []
-  })
-}, [realScale])
-```
-
-#### C. Seguimiento Geográfico de la ISS
-*Archivo:* [useISS.ts](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/frontend/src/hooks/useISS.ts)
-
-Consumo continuo en segundo plano de telemetría de satélites mediante React Hooks personalizados, proporcionando actualizaciones de latitud/longitud en tiempo real y gestionando correctamente los intervalos de actualización y des-suscripción para evitar fugas de memoria.
+# ASTRALIS — Frontend (E4)
+ 
+**Stack:** React · TypeScript · Vite · Three.js · Canvas API · Recharts · Axios
+ 
+## Arquitectura
+ 
+El frontend sigue una separación en capas: `pages/` orquesta las vistas, `hooks/` gestiona el estado y las llamadas al backend, `services/` centraliza la comunicación HTTP, y `components/` renderiza las piezas reutilizables. Ningún componente llama directamente a `fetch` o `axios`.
+ 
+La autenticación usa JWT — el token se guarda en `localStorage` y un interceptor de Axios lo adjunta automáticamente en cada request. El estado global del usuario se maneja con `AuthContext` usando React Context API.
+ 
+## Vistas principales
+ 
+**Catálogo de Exoplanetas** — Consume `GET /api/exoplanets` para mostrar más de 9.000 candidatos del telescopio Kepler con filtros por clasificación (Confirmado, Candidato, Falso Positivo) y paginación. Las clasificaciones vienen de la columna `koi_disposition` del NASA Exoplanet Archive.
+ 
+**Detalle de Exoplaneta** — Muestra los parámetros orbitales del planeta y su curva de luz de tránsito, calculada por el backend con un modelo basado en Mandel & Agol y renderizada con Recharts.
+ 
+**Simulador Orbital** — Visualización 2D del sistema solar construida con Canvas API. Las velocidades angulares siguen la Tercera Ley de Kepler. Soporta zoom con scroll, drag para pan, trails de órbita y control de velocidad hasta 100×. Los datos de masa y radio vienen del endpoint `GET /api/simulation/bodies`. Al hacer click en un planeta se abre la vista 3D.
+ 
+**Vista 3D de Planeta** — Construida con Three.js. Renderiza el planeta con textura real, rotación automática con inercia, drag para girar manualmente y zoom con scroll. Saturno incluye anillos con geometría `RingGeometry`.
+ 
+**ISS Tracker** — Muestra la posición de la Estación Espacial Internacional en tiempo real sobre un mapa, consumiendo `GET /api/iss/position` cada pocos segundos.
+ 
+**Login / Registro** — Formularios conectados al backend con manejo de errores del servidor. Implementa bloqueo progresivo: 3 intentos fallidos bloquean el formulario 30 segundos, complementando el rate limiting del backend.
+ 
+## Seguridad
+ 
+- Interceptor Axios adjunta JWT en cada request automáticamente
+- Lockout del lado del cliente en Login (3 intentos → 30s bloqueado)
+- Variables de entorno con Vite para separar configuración por ambiente
