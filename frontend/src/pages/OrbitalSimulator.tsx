@@ -3,6 +3,7 @@ import OrbitalCanvas, {
   type OrbitalCanvasHandle,
   type PlanetData,
 } from "../components/orbital/OrbitalCanvas";
+import PlanetViewer from "../components/orbital/PlanetViewer";
 
 const SPEEDS = [
   { label: "1×", value: 1 },
@@ -14,9 +15,11 @@ const SPEEDS = [
 const PlanetPanel = ({
   planet,
   onClose,
+  onView,
 }: {
   planet: PlanetData;
   onClose: () => void;
+  onView: () => void;
 }) => (
   <div
     style={{
@@ -146,6 +149,25 @@ const PlanetPanel = ({
     >
       "{planet.fact}"
     </p>
+    <button
+      onClick={onView}
+      style={{
+        width: "100%",
+        padding: "0.6rem",
+        borderRadius: "8px",
+        marginTop: "0.75rem",
+        background: `${planet.glowColor}22`,
+        border: `1px solid ${planet.glowColor}55`,
+        color: planet.glowColor,
+        cursor: "pointer",
+        fontFamily: "var(--font-display)",
+        fontSize: "0.75rem",
+        fontWeight: 700,
+        letterSpacing: "0.1em",
+      }}
+    >
+      VER EN 3D →
+    </button>
   </div>
 );
 
@@ -155,6 +177,7 @@ const OrbitalSimulator = () => {
   const [speed, setSpeed] = useState(1);
   const [selectedPlanet, setSelectedPlanet] = useState<PlanetData | null>(null);
   const [realScale, setRealScale] = useState(false);
+  const [viewerPlanet, setViewerPlanet] = useState<PlanetData | null>(null);
 
   const handlePlanetClick = useCallback((planet: PlanetData | null) => {
     setSelectedPlanet(planet);
@@ -206,7 +229,6 @@ const OrbitalSimulator = () => {
           SIMULADOR ORBITAL
         </h1>
       </div>
-
       {/* Controles flotantes */}
       <div
         style={{
@@ -300,13 +322,25 @@ const OrbitalSimulator = () => {
           {realScale ? "Escalas Reales" : "Escala Visual"}
         </button>
       </div>
-
       {selectedPlanet && (
         <PlanetPanel
           planet={selectedPlanet}
           onClose={() => setSelectedPlanet(null)}
+          onView={() => {
+            setViewerPlanet(selectedPlanet);
+            setSelectedPlanet(null);
+          }}
         />
       )}
+      // Agrega el PlanetViewer al final, antes del cierre del div principal:
+      <div style={{ display: viewerPlanet ? "block" : "none" }}>
+        {viewerPlanet && (
+          <PlanetViewer
+            planet={viewerPlanet}
+            onClose={() => setViewerPlanet(null)}
+          />
+        )}
+      </div>{" "}
     </div>
   );
 };
