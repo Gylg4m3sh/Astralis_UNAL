@@ -31,7 +31,6 @@ services:
       - SECRET_KEY=dev_secret_cambia_en_produccion
     volumes:
       - ./backend:/app
-      - /app/requirements.txt
     depends_on:
       db:
         condition: service_healthy
