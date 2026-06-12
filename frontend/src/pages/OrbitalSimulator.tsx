@@ -154,6 +154,7 @@ const OrbitalSimulator = () => {
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [selectedPlanet, setSelectedPlanet] = useState<PlanetData | null>(null);
+  const [realScale, setRealScale] = useState(false);
 
   const handlePlanetClick = useCallback((planet: PlanetData | null) => {
     setSelectedPlanet(planet);
@@ -179,7 +180,7 @@ const OrbitalSimulator = () => {
         overflow: "hidden",
       }}
     >
-      <OrbitalCanvas ref={canvasRef} onPlanetClick={handlePlanetClick} />
+      <OrbitalCanvas ref={canvasRef} onPlanetClick={handlePlanetClick} realScale={realScale} />
 
       {/* Header flotante */}
       <div
@@ -272,6 +273,32 @@ const OrbitalSimulator = () => {
             {label}
           </button>
         ))}
+
+        <div
+          style={{
+            width: "1px",
+            height: "24px",
+            background: "var(--color-border)",
+          }}
+        />
+
+        <button
+          onClick={() => setRealScale(prev => !prev)}
+          style={{
+            padding: "4px 12px",
+            borderRadius: "999px",
+            cursor: "pointer",
+            fontFamily: "var(--font-body)",
+            fontSize: "0.75rem",
+            background: realScale ? "var(--color-accent)" : "transparent",
+            color: realScale ? "#fff" : "var(--color-muted)",
+            border: `1px solid ${realScale ? "var(--color-accent)" : "transparent"}`,
+            transition: "all 0.2s",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {realScale ? "Escalas Reales" : "Escala Visual"}
+        </button>
       </div>
 
       {selectedPlanet && (

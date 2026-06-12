@@ -21,36 +21,7 @@ const NavBar = () => {
       background: 'var(--color-deep)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              background: 'none', border: '1px solid var(--color-border)', borderRadius: '6px',
-              padding: '4px 8px', cursor: 'pointer', color: 'var(--color-muted)',
-              fontFamily: 'var(--font-body)', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-text)'; e.currentTarget.style.borderColor = 'var(--color-accent)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
-            title="Ir Atrás"
-          >
-            &#8592; Atrás
-          </button>
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              background: 'none', border: '1px solid var(--color-border)', borderRadius: '6px',
-              padding: '4px 8px', cursor: 'pointer', color: 'var(--color-muted)',
-              fontFamily: 'var(--font-body)', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-text)'; e.currentTarget.style.borderColor = 'var(--color-accent)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
-            title="Página Principal"
-          >
-            &#8962; Principal
-          </button>
-        </div>
+
 
         <span style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,

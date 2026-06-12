@@ -24,6 +24,7 @@ export interface OrbitalCanvasHandle {
 
 interface Props {
   onPlanetClick: (planet: PlanetData | null) => void
+  realScale?: boolean
 }
 
 const BASE_SPEED = 0.008
@@ -71,11 +72,32 @@ const PLANETS: PlanetData[] = [
     speed: BASE_SPEED / Math.pow(9.58, 1.5) * 9.58, angle: Math.random() * Math.PI * 2,
     fact: 'Sus anillos tienen 270.000 km de diámetro pero solo 1 km de grosor.',
   },
+  {
+    id: 'uranus', name: 'Urano', color: '#D1E7E7', glowColor: '#e0ffff',
+    radius: 9, orbitRadius: 470, distanceAU: 19.22, orbitalPeriodDays: 30687,
+    diameterKm: 51118, moons: 28, rings: true,
+    speed: BASE_SPEED / Math.pow(19.22, 1.5) * 19.22, angle: Math.random() * Math.PI * 2,
+    fact: 'Tiene los anillos verticales y rota completamente de lado.',
+  },
+  {
+    id: 'neptune', name: 'Neptuno', color: '#4B70DD', glowColor: '#63b3ed',
+    radius: 9, orbitRadius: 530, distanceAU: 30.05, orbitalPeriodDays: 60190,
+    diameterKm: 49528, moons: 16, rings: false,
+    speed: BASE_SPEED / Math.pow(30.05, 1.5) * 30.05, angle: Math.random() * Math.PI * 2,
+    fact: 'El planeta más lejano y con los vientos más fuertes del sistema solar.',
+  },
+  {
+    id: 'pluto', name: 'Plutón', color: '#E7E4D9', glowColor: '#f7fafc',
+    radius: 3, orbitRadius: 580, distanceAU: 39.48, orbitalPeriodDays: 90560,
+    diameterKm: 2376, moons: 5, rings: false,
+    speed: BASE_SPEED / Math.pow(39.48, 1.5) * 39.48, angle: Math.random() * Math.PI * 2,
+    fact: 'Reclasificado como planeta enano, posee un gran glaciar de nitrógeno con forma de corazón.',
+  },
 ]
 
 const TRAIL_LENGTH = 120
-const MIN_ZOOM = 0.3
-const MAX_ZOOM = 4
+const MIN_ZOOM = 0.02
+const MAX_ZOOM = 15
 
 const buildNebula = (W: number, H: number): HTMLCanvasElement => {
   const nc = document.createElement('canvas')
@@ -111,7 +133,7 @@ const buildNebula = (W: number, H: number): HTMLCanvasElement => {
   return nc
 }
 
-const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick }, ref) => {
+const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick, realScale = false }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<number>(0)
@@ -137,6 +159,23 @@ const OrbitalCanvas = forwardRef<OrbitalCanvasHandle, Props>(({ onPlanetClick },
     setPaused: (v) => { pausedRef.current = v },
     setSpeedMultiplier: (v) => { speedRef.current = v },
   }))
+
+  useEffect(() => {
+    // Cuando cambie el modo de escala, actualizamos orbitRadius de cada planeta
+    const scaleFactor = 150
+    planetsRef.current.forEach(p => {
+      const original = PLANETS.find(orig => orig.id === p.id)
+      if (original) {
+        p.orbitRadius = realScale 
+          ? original.distanceAU * scaleFactor 
+          : original.orbitRadius
+      }
+    })
+    // Limpiar senderos (trails) para evitar saltos visuales bruscos
+    Object.keys(trailsRef.current).forEach(k => {
+      trailsRef.current[k] = []
+    })
+  }, [realScale])
 
   useEffect(() => {
     const container = containerRef.current

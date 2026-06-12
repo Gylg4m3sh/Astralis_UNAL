@@ -77,6 +77,36 @@ _BODIES: list[dict] = [
         "color": "#E4D191",
         "texture": None,
     },
+    {
+        "id": "uranus",
+        "name": "Urano",
+        "mass": 8.681e25,
+        "radius": 25362.0,
+        "position": [19.22, 0.0, 0.0],
+        "velocity": [0.0, 6.81, 0.0],
+        "color": "#D1E7E7",
+        "texture": None,
+    },
+    {
+        "id": "neptune",
+        "name": "Neptuno",
+        "mass": 1.024e26,
+        "radius": 24622.0,
+        "position": [30.05, 0.0, 0.0],
+        "velocity": [0.0, 5.43, 0.0],
+        "color": "#4B70DD",
+        "texture": None,
+    },
+    {
+        "id": "pluto",
+        "name": "Plutón",
+        "mass": 1.303e22,
+        "radius": 1188.3,
+        "position": [39.48, 0.0, 0.0],
+        "velocity": [0.0, 4.74, 0.0],
+        "color": "#E7E4D9",
+        "texture": None,
+    },
 ]
 
 

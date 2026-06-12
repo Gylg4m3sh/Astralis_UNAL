@@ -53,8 +53,24 @@ def _load_df() -> pd.DataFrame:
         return _df_cache
 
     if not os.path.exists(CSV_PATH):
-        # Si aún no tienes el CSV, devuelve datos de ejemplo para no romper el frontend
-        return _mock_df()
+        # Intentar descargar el CSV en tiempo real desde la API de la NASA
+        try:
+            import httpx
+            os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
+            url = (
+                "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?"
+                "query=select+kepid,kepler_name,kepoi_name,koi_period,koi_prad,koi_teq,koi_disposition,koi_score+from+cumulative"
+                "&format=csv"
+            )
+            response = httpx.get(url, timeout=30.0)
+            response.raise_for_status()
+            with open(CSV_PATH, "wb") as f:
+                f.write(response.content)
+        except Exception as e:
+            # Si hay algún error (p.ej. sin internet), devolver fallback
+            print(f"Error al descargar exoplanetas de la NASA API (usando mock de respaldo): {e}")
+            if not os.path.exists(CSV_PATH):
+                return _mock_df()
 
     df = pd.read_csv(CSV_PATH, comment="#")  # el CSV de NASA tiene líneas de comentario con #
 

@@ -5,14 +5,34 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
-from app.core.database import Base, engine
-from app.models import user  # noqa: F401
+from app.core.database import Base, engine, SessionLocal
+from app.models.user import User
+from app.core.security import hash_password
 from app.routers import auth, exoplanets, iss, simulation
+import uuid
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
 Base.metadata.create_all(bind=engine)
+
+# Semillar usuario demo si no existe
+db = SessionLocal()
+try:
+    demo_user = db.query(User).filter(User.email == "demo@unal.edu.co").first()
+    if not demo_user:
+        user = User(
+            id=str(uuid.uuid4()),
+            username="demo",
+            email="demo@unal.edu.co",
+            hashed_password=hash_password("demo1234"),
+        )
+        db.add(user)
+        db.commit()
+except Exception as e:
+    print(f"Error seeding demo user: {e}")
+finally:
+    db.close()
 
 app = FastAPI(
     title="ASTRALIS API",
