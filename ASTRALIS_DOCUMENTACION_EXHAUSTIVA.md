@@ -144,7 +144,7 @@ spec:
 #### E. Script de Automatización de Despliegue en PowerShell
 *Archivo:* [deploy.ps1](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/deploy.ps1)
 
-Se diseñó un script interactivo en PowerShell que automatiza todo el flujo del despliegue tanto para Docker Compose como para Kubernetes. Detecta si el clúster activo es Minikube y se encarga de subir las imágenes al entorno simulado, aplicar los manifiestos ordenadamente (`secrets` -> `configmaps` -> `db` -> `backend` -> `frontend`), y sugerir los comandos finales de acceso y diagnóstico en tiempo real.
+Se diseñó un script interactivo en PowerShell que automatiza todo el flujo del despliegue tanto para Docker Compose como para Kubernetes. Detecta si el clúster activo es Minikube y se encarga de subir las imágenes al entorno simulado, compilar las imágenes Docker de frontend, backend y el microservicio de ML, aplicar los manifiestos ordenadamente (`secrets` -> `configmaps` -> `db` -> `ml` -> `backend` -> `frontend`), y sugerir los comandos finales de acceso y diagnóstico en tiempo real.
 
 ---
 
@@ -165,6 +165,19 @@ El rol de Ciencia de Datos fundamenta científicamente el proyecto mediante la s
 
 *   Implementación de algoritmos gravitacionales usando métodos Runge-Kutta para simular órbitas keplerianas.
 *   Usa el principio $T^2 = a^3 / M$ para calcular y contrastar los períodos simulados contra la realidad orbital, asegurando que las trayectorias de los planetas modelados en las APIs sigan de manera fiel las leyes de la física newtoniana.
+
+#### C. Arquitectura de Despliegue en Kubernetes y API de Inferencia
+*Archivos:* [ml.yaml](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/k8s/ml.yaml) y [README.md (ml_service)](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/ml_service/README.md)
+
+El clasificador se empaquetó como un microservicio FastAPI independiente (`astralis-ml`) y se integró en el orquestador de contenedores Kubernetes:
+*   **Orquestación en K8s (`k8s/ml.yaml`):** Se despliega con un replica-set de 1 pod y se expone internamente en el clúster a través del puerto `8001` mediante un servicio `ClusterIP` con el nombre de host DNS `astralis-ml`.
+*   **Resolución Dinámica:** El backend FastAPI resuelve y consume este servicio apuntando a `http://astralis-ml:8001` (inyectado mediante `ConfigMap` en `ml-service-url`).
+*   **Endpoints de API expuestos:**
+    1.  `GET /health`: Monitoreo y métricas básicas del modelo.
+    2.  `POST /predict`: Inferencia individual enviando 12 parámetros (KOI).
+    3.  `POST /predict/batch`: Inferencia masiva optimizada (lotes de hasta 500 candidatos).
+    4.  `GET /model/info`: Reporte de precisión, recall, F1-Score y peso/importancia de variables.
+    5.  `POST /model/retrain`: Dispara una tarea asíncrona (`BackgroundTasks`) que actualiza el modelo descargando datos frescos de la base de datos de la NASA mediante ADQL.
 
 ---
 

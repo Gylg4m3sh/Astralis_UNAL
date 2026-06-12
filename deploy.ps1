@@ -57,12 +57,14 @@ elseif ($choice -eq "2") {
     Write-Host "-> Compilando imágenes Docker locales..." -ForegroundColor Gray
     docker build -t astralis-backend:latest ./backend
     docker build -t astralis-frontend:latest ./frontend
+    docker build -t astralis-ml:latest ./ml_service
 
     # Si es minikube, cargar las imágenes dentro del clúster
     if ($minikubeCheck -eq "minikube") {
         Write-Host "-> Cargando imágenes dentro de Minikube..." -ForegroundColor Gray
         minikube image load astralis-backend:latest
         minikube image load astralis-frontend:latest
+        minikube image load astralis-ml:latest
     }
 
     Write-Host "-> Aplicando secretos y configuraciones..." -ForegroundColor Gray
@@ -71,6 +73,9 @@ elseif ($choice -eq "2") {
 
     Write-Host "-> Desplegando Base de Datos PostgreSQL..." -ForegroundColor Gray
     kubectl apply -f k8s/db.yaml
+
+    Write-Host "-> Desplegando Microservicio de Machine Learning (ML)..." -ForegroundColor Gray
+    kubectl apply -f k8s/ml.yaml
 
     Write-Host "-> Desplegando Backend API..." -ForegroundColor Gray
     kubectl apply -f k8s/backend.yaml

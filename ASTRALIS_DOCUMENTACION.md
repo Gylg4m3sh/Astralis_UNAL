@@ -93,15 +93,16 @@ El proyecto está completamente dockerizado y orquestado mediante Docker Compose
 ### Orquestación con Kubernetes
 Para desplegar la aplicación a gran escala en producción, se ha estructurado un conjunto de manifiestos declarativos de Kubernetes en el directorio `k8s/`:
 - **`secrets.yaml`:** Manejo seguro de credenciales cifradas en Base64 (usuario y contraseña de la BD, URL de la base de datos y llaves secretas JWT).
-- **`configmap.yaml`:** Configuración de variables de entorno no sensibles (URLs, nombres de entorno, puertos).
+- **`configmap.yaml`:** Configuración de variables de entorno no sensibles (URLs de backend y frontend, puertos, y la URL de resolución interna para el servicio ML).
 - **`db.yaml`:** Declara un `PersistentVolumeClaim` (PVC) de 1Gi para garantizar la persistencia de PostgreSQL al reiniciar pods, junto al `Deployment` de Postgres y un `Service` interno expuesto en el puerto 5432.
-- **`backend.yaml`:** Deployment del backend escalable de manera horizontal e inyección de secretos, expuesto internamente mediante un Service ClusterIP en el puerto 8000.
+- **`ml.yaml`:** Deployment y Service ClusterIP (puerto 8001) para el microservicio de Machine Learning (`astralis-ml`), resolviendo predicciones en base a un clasificador Random Forest.
+- **`backend.yaml`:** Deployment del backend escalable de manera horizontal e inyección de secretos/configuraciones, expuesto internamente mediante un Service ClusterIP en el puerto 8000.
 - **`frontend.yaml`:** Deployment de la interfaz de Nginx expuesta hacia el exterior mediante un Service tipo `LoadBalancer` en el puerto 8080.
 
 ### Script de Despliegue Interactivo (`deploy.ps1`)
 Para simplificar la administración y el ciclo de vida del desarrollo local y de staging, se ha implementado un script interactivo en PowerShell (`deploy.ps1`) que:
 1. Automatiza el ciclo completo de Docker Compose (`down` -> `up --build -d`), compilando imágenes locales y exponiendo el puerto `8080`.
-2. Verifica dependencias locales de Kubernetes (`kubectl` y clúster activo), compila las imágenes Docker del frontend y backend, carga las imágenes en el clúster si se usa Minikube, y aplica todos los manifiestos (`secrets`, `configmaps`, `db`, `backend` y `frontend`) en orden jerárquico.
+2. Verifica dependencias locales de Kubernetes (`kubectl` y clúster activo), compila las imágenes Docker del frontend, backend y el microservicio de ML, carga las imágenes en el clúster si se usa Minikube, y aplica todos los manifiestos (`secrets`, `configmaps`, `db`, `ml`, `backend` y `frontend`) en orden jerárquico.
 
 ### Pipeline de Integración Continua (CI/CD)
 El proyecto utiliza GitHub Actions para automatizar las pruebas y garantizar la calidad en cada integración:
