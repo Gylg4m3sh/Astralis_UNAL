@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: astralis-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: astralis-frontend
+  template:
+    metadata:
+      labels:
+        app: astralis-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: astralis-frontend:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: astralis-frontend
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8080
+      targetPort: 80
+  selector:
+    app: astralis-frontend
