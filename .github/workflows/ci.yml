@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main, DEVOPSDOCKERTEST ]
+    branches: [ main, DEVOPSDOCKERTEST, "Kubernetes(extradevops)" ]
   pull_request:
-    branches: [ main, DEVOPSDOCKERTEST ]
+    branches: [ main, DEVOPSDOCKERTEST, "Kubernetes(extradevops)" ]
 
 jobs:
   backend-tests:
