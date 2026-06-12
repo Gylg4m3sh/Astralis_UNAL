@@ -1,27 +1,178 @@
 # Documentación Técnica Exhaustiva — Proyecto Astralis
 
-Este documento expone en profundidad todos los desarrollos e implementaciones técnicas aplicadas en el proyecto **Astralis**, clasificándolas detalladamente según los cuatro roles técnicos oficiales (E1 a E4) y destacando las funcionalidades e implementaciones de código más interesantes.
+Este documento contiene la especificación técnica, la arquitectura del sistema, el diseño de componentes y la documentación detallada del código para el proyecto **Astralis**, una plataforma de visualización astronómica y análisis de exoplanetas.
 
 ---
 
-## 🏛️ Estructura General del Proyecto
-Astralis está compuesto por un backend asíncrono con **FastAPI**, un frontend interactivo en **React** con **TypeScript**, y una suite de infraestructura y pruebas automatizada orquestada mediante **Docker Compose** y **Kubernetes**.
+## 🏛️ Arquitectura y Estructura del Sistema
+
+Astralis está estructurado bajo una arquitectura de microservicios distribuidos y desacoplados. La comunicación se realiza mediante HTTP REST y transferencias asíncronas de datos.
+
+```mermaid
+graph TD
+    subgraph Capa de Presentación [Frontend - SPA]
+        ReactUI[Interfaz React & TS]
+        Canvas2D[Lienzo 2D - Canvas API]
+        Three3D[Explorador 3D - Three.js]
+        Charts[Curvas de Luz - Recharts]
+    end
+
+    subgraph Capa de Servicios [Backend - FastAPI]
+        Gateway[API Router]
+        DbService[Gestor de Base de Datos]
+        NasaClient[Cliente NASA TAP]
+        LightCurveSim[Simulador de Tránsito]
+    end
+
+    subgraph Capa Analítica [Machine Learning]
+        MLAPI[API de Inferencia]
+        RFClassifier[Clasificador Random Forest]
+    end
+
+    ReactUI -->|HTTP / API| Gateway
+    Gateway -->|Conexión SQL| DbService
+    Gateway -->|Proxy HTTP| MLAPI
+    NasaClient -->|ADQL Query| NASA[(NASA Exoplanet Archive)]
+```
+
+### Componentes de la Solución
+1. **Frontend (`frontend/`)**: Aplicación de página única (SPA) interactiva estructurada con React, TypeScript y Vite. Gestiona visualizaciones matemáticas en Canvas y Three.js.
+2. **Backend (`backend/`)**: API REST asíncrona construida en FastAPI. Procesa solicitudes de datos celestes, genera curvas de luz dinámicas y sirve de proxy hacia el microservicio de Machine Learning.
+3. **Servicio ML (`ml_service/`)**: Microservicio FastAPI dedicado a clasificar candidatos de exoplanetas usando un modelo supervisado Random Forest y a re-entrenar el clasificador de forma asíncrona.
+4. **Infraestructura (`k8s/`, `docker-compose.yml`)**: Orquestación y empaquetado del ecosistema completo.
 
 ---
 
-## 1. ⚙️ Rol E1: Backend & API Engineer
-El ingeniero de backend se enfoca en el diseño de la API RESTful, el modelado relacional y la sincronización asíncrona de datos desde catálogos externos.
+## 1. 💻 Frontend & Visualizaciones
 
-### 🌟 Funcionalidades Interesantes & Implementaciones de Código
+La interfaz visual está optimizada para el renderizado eficiente de simulaciones en el cliente mediante Canvas y WebGL.
 
-#### A. Cliente de Descarga Dinámica TAP NASA (ADQL)
-*Archivo:* [nasa.py](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/backend/app/services/nasa.py)
+### Componentes y Vistas Principales
 
-Para evitar un catálogo con placeholders estáticos, el backend implementa una función de descarga asíncrona de datos en tiempo real directo del **NASA Exoplanet Archive** mediante peticiones de Protocolo de Acceso a Tablas (TAP) con sentencias ADQL (Astronomical Data Query Language).
+#### A. Simulador Orbital 2D (Canvas API)
+El simulador orbital modela el movimiento de los planetas del sistema solar interior y exterior basándose en la Tercera Ley de Kepler. La velocidad orbital angular de cada planeta se ajusta dinámicamente según su distancia media al Sol (en Unidades Astronómicas):
 
-El backend descarga más de **9,500 exoplanetas** al arrancar si no detecta el archivo local `kepler_exoplanets.csv`, actuando como una memoria caché local:
+```typescript
+// Archivo: frontend/src/components/orbital/OrbitalCanvas.tsx
+const BASE_SPEED = 0.008;
+
+const PLANETS: PlanetData[] = [
+  {
+    id: "mercury",
+    name: "Mercurio",
+    color: "#b5b5b5",
+    glowColor: "#d4d4d4",
+    radius: 4,
+    orbitRadius: 80,
+    distanceAU: 0.39,
+    orbitalPeriodDays: 88,
+    diameterKm: 4879,
+    moons: 0,
+    rings: false,
+    speed: (BASE_SPEED / Math.pow(0.39, 1.5)) * 0.39, // Velocidad Kepleriana ajustada
+    angle: Math.random() * Math.PI * 2,
+    fact: "El planeta más pequeño y más cercano al Sol.",
+  },
+  {
+    id: "earth",
+    name: "Tierra",
+    color: "#4B9CD3",
+    glowColor: "#87ceeb",
+    radius: 7,
+    orbitRadius: 185,
+    distanceAU: 1.0,
+    orbitalPeriodDays: 365,
+    diameterKm: 12742,
+    moons: 1,
+    rings: false,
+    speed: BASE_SPEED,
+    angle: Math.random() * Math.PI * 2,
+    fact: "Único planeta conocido con vida.",
+  }
+];
+```
+
+El motor de animación utiliza `requestAnimationFrame` para recalcular posiciones y dibujar las trayectorias de manera continua:
+
+```typescript
+// Archivo: frontend/src/components/orbital/OrbitalCanvas.tsx (bucle de dibujo)
+planetsRef.current.forEach((planet) => {
+  if (!pausedRef.current) {
+    planet.angle += planet.speed * speedRef.current;
+  }
+  const x = cx + Math.cos(planet.angle) * planet.orbitRadius * zoom;
+  const y = cy + Math.sin(planet.angle) * planet.orbitRadius * zoom;
+  positionsRef.current[planet.id] = { x, y };
+
+  const trail = trailsRef.current[planet.id];
+  if (!pausedRef.current) {
+    trail.push([x, y]);
+    if (trail.length > TRAIL_LENGTH) trail.shift();
+  }
+  drawTrail(planet, trail, cx, cy, zoom);
+  drawPlanet(planet, x, y, cx, cy, zoom);
+});
+```
+
+#### B. Exploración 3D de Planetas (Three.js)
+El componente `PlanetViewer` implementa WebGL para renderizar mallas esféricas texturizadas interactivas. Cuenta con rotación orbital programada y atenuación de inercia tras arrastre manual:
+
+```typescript
+// Archivo: frontend/src/components/orbital/PlanetViewer.tsx
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 1000);
+camera.position.z = 3;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(W, H);
+mount.appendChild(renderer.domElement);
+
+const geometry = new THREE.SphereGeometry(1, 64, 64);
+const textureUrl = TEXTURES[planet.id];
+const material = textureUrl
+  ? new THREE.MeshPhongMaterial({
+      map: new THREE.TextureLoader().load(textureUrl),
+      shininess: 30,
+    })
+  : new THREE.MeshPhongMaterial({
+      color: new THREE.Color(planet.color),
+      shininess: 30,
+    });
+
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+```
+
+Para Saturno se añade una geometría de anillos específicos:
+
+```typescript
+if (planet.rings) {
+  const ringGeo = new THREE.RingGeometry(1.4, 2.2, 64);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xe8d5a3,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.6,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 3;
+  scene.add(ring);
+}
+```
+
+---
+
+## 2. ⚙️ Backend & Lógica de Negocio
+
+El backend está desarrollado sobre FastAPI, proporcionando endpoints para el catálogo, simulación orbital y proxy de inferencia.
+
+### Componentes Clave
+
+#### A. Integración con el NASA Exoplanet Archive (ADQL/TAP)
+El backend cuenta con un cliente que realiza consultas asíncronas utilizando sentencias **ADQL** hacia la base de datos central de la NASA. El resultado se procesa con Pandas y se guarda localmente en caché:
 
 ```python
+# Archivo: backend/app/services/nasa.py
 def _load_df() -> pd.DataFrame:
     global _df_cache
     if _df_cache is not None:
@@ -31,7 +182,7 @@ def _load_df() -> pd.DataFrame:
         try:
             import httpx
             os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
-            # Query ADQL sobre la tabla 'cumulative' de la NASA
+            # Consulta asíncrona TAP ADQL
             url = (
                 "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?"
                 "query=select+kepid,kepler_name,kepoi_name,koi_period,koi_prad,koi_teq,koi_disposition,koi_score+from+cumulative"
@@ -42,38 +193,56 @@ def _load_df() -> pd.DataFrame:
             with open(CSV_PATH, "wb") as f:
                 f.write(response.content)
         except Exception as e:
-            # Fallback en caso de error de red
-            print(f"Error al descargar exoplanetas: {e}")
+            print(f"Error al descargar exoplanetas de la API NASA: {e}")
             if not os.path.exists(CSV_PATH):
                 return _mock_df()
 ```
 
-#### B. Generador Matemático de Curvas de Luz por Tránsito
-*Archivo:* [exoplanets.py](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/backend/app/routers/exoplanets.py)
-
-El endpoint `/api/exoplanets/{exoplanet_id}/lightcurve` computa en tiempo real los puntos de flujo lumínico normalizado para simular la disminución de brillo cuando un planeta pasa frente a su estrella.
-*   Usa el radio del exoplaneta ($R_p$) y el período orbital para calcular la duración y profundidad del tránsito lumínico ($Depth \propto (R_p / R_*)^2$).
-*   Añade ruido Gaussiano realista a las mediciones fotométricas para simular el ruido instrumental de un telescopio espacial:
+#### B. Algoritmo de Simulación Fotométrica de Curvas de Luz
+La curva de luz se genera en el endpoint `/api/exoplanets/{exoplanet_id}/lightcurve` aplicando un modelo geométrico de atenuación proporcional a la relación de áreas estelares e inyectando ruido gaussiano para simular la dispersión real de sensores espaciales:
 
 ```python
-# Fórmula matemática aplicada para la atenuación y el ruido fotométrico:
-# Durante el tránsito (tiempo t entre inicio y fin):
-# Flux = 1.0 - depth
-# Fuera del tránsito:
-# Flux = 1.0
-# Se le añade ruido gaussiano:
-flux_noise = flux + random.normalvariate(0, 0.0008)
+# Archivo: backend/app/routers/exoplanets.py
+def _transit_depth(planet_radius: float) -> float:
+    ratio = planet_radius * 0.009167  # Radios terrestres a radios solares
+    return min(ratio * ratio, 0.05)
+
+def _transit_shape(t: float, duration: float, depth: float) -> float:
+    half_d = duration / 2
+    ingress = duration * 0.15 # 15% del tiempo en tránsito se considera ingreso/egreso
+    if abs(t) > half_d:
+        return 1.0
+    if abs(t) > half_d - ingress:
+        phase = (half_d - abs(t)) / ingress
+        return 1.0 - depth * math.sin((phase * math.pi) / 2) ** 2
+    return 1.0 - depth
+
+def _generate_light_curve(planet_radius: float, orbital_period: float) -> list[dict]:
+    depth = _transit_depth(planet_radius)
+    duration = min(orbital_period * 0.01, 8)
+    noise_level = 0.0008 + random.random() * 0.0004
+    total_time = duration * 4
+    steps = 200
+    points = []
+    for i in range(steps + 1):
+        t = -total_time / 2 + (i / steps) * total_time
+        flux = _transit_shape(t, duration, depth)
+        noise = (random.random() - 0.5) * 2 * noise_level # Ruido instrumental simulado
+        points.append({
+            "time": round(t, 3),
+            "flux": round(flux, 6),
+            "fluxNoise": round(flux + noise, 6),
+        })
+    return points
 ```
 
-#### C. Tolerancia a Fallos y Mecanismo Fallback de Base de Datos
-*Archivo:* [database.py](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/backend/app/core/database.py)
-
-Para que el proyecto se pueda inicializar y probar localmente de manera inmediata sin configurar obligatoriamente un motor local de Postgres (lo cual es vital para entornos de pruebas rápidas y pipelines de CI/CD), la base de datos detecta si la librería `psycopg2` está ausente o falla la conexión. En tal caso, redirige de forma transparente la persistencia a un motor de base de datos **SQLite en memoria**:
+#### C. Tolerancia de Inicialización en Persistencia
+La base de datos se adapta al entorno de ejecución. Si el controlador de producción PostgreSQL no está presente o falla la conexión, conmuta dinámicamente a una persistencia en memoria local con SQLite para evitar fallas del microservicio:
 
 ```python
+# Archivo: backend/app/core/database.py
 try:
     if "pytest" in sys.modules or not psycopg2_installed:
-        # SQLite temporal para pruebas y desarrollo libre de dependencias complejas
         DATABASE_URL = "sqlite:///./test.db"
         engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
     else:
@@ -85,129 +254,121 @@ except Exception:
 
 ---
 
-## 2. 🧪 Rol E2: QA, Testing & DevOps Engineer
-Este rol consolidado unifica el aseguramiento de la calidad y la automatización de la infraestructura, garantizando estabilidad en el código y eficiencia en el ciclo de entrega.
+## 3. 🧠 Machine Learning & Análisis
 
-### 🌟 Funcionalidades Interesantes & Implementaciones de Código
+El procesamiento analítico clasifica a los candidatos a exoplanetas en tres posibles estados (`CONFIRMED`, `CANDIDATE`, `FALSE_POSITIVE`).
 
-#### A. Validación de Cuerpos Celestes del Sistema Solar (Pruebas Unitarias)
-*Archivo:* [test_simulation.py](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/backend/tests/test_simulation.py)
+### Modelo RandomForest y Lógica de Inferencia
 
-Verifica que el simulador reconozca y retorne tanto los planetas estándar como los tres nuevos cuerpos del sistema solar exterior (Urano, Neptuno y el planeta enano Plutón):
+#### A. Imputación Dinámica de Atributos Faltantes
+El clasificador requiere 12 variables físicas del dataset Kepler. En solicitudes donde no estén completas, el microservicio ML realiza una imputación en caliente asignando la mediana calculada del set de entrenamiento:
 
 ```python
-def test_simulation_bodies():
-    response = client.get("/api/simulation/bodies")
-    assert response.status_code == 200
-    bodies = response.json()
-    assert isinstance(bodies, list)
-    
-    body_ids = [body["id"] for body in bodies]
-    expected_bodies = ["sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]
-    for body_id in expected_bodies:
-        assert body_id in body_ids, f"{body_id} no se encuentra en la simulación"
+# Archivo: ml_service/app/model.py
+def _features_to_array(self, feat: ExoplanetFeatures) -> tuple[np.ndarray, int]:
+    available_features = self.meta.get("features", ML_FEATURES)
+    row = []
+    used = 0
+    for f in available_features:
+        val = getattr(feat, f, None)
+        if val is None:
+            row.append(self.medians.get(f, 0.0)) # Imputación por mediana pre-calculada
+        else:
+            row.append(float(val))
+            used += 1
+    return np.array([row]), used
 ```
 
-#### B. Pipeline de Automatización con GitHub Actions
-*Archivo:* [.github/workflows/ci.yml](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/.github/workflows/ci.yml)
+#### B. Entrenamiento en Segundo Plano No Bloqueante
+El re-entrenamiento del clasificador se ejecuta asíncronamente en segundo plano. Esto asegura que la API de predicciones siga activa respondiendo solicitudes con la versión previa del modelo hasta que el nuevo modelo esté guardado y cargado en memoria:
 
-El flujo de integración continua está configurado para ejecutarse en paralelo y validar tanto frontend como backend:
-*   Instala dependencias, ejecuta chequeos de formato (`flake8`), y corre los tests con un umbral de cobertura mínimo del **60%**.
-*   Construye las imágenes Docker correspondientes para comprobar que los Dockerfiles compilan perfectamente antes de dar luz verde para la mezcla a la rama `main`.
+```python
+# Archivo: ml_service/app/main.py
+@app.post("/model/retrain", response_model=RetrainResponse, tags=["model"])
+async def retrain(background_tasks: BackgroundTasks):
+    background_tasks.add_task(ml_model.retrain)
+    return RetrainResponse(
+        status="retraining_started",
+        message="Re-entrenamiento iniciado en background. Consulta /health para ver cuando termina.",
+        current_version=ml_model.version,
+    )
+```
 
-#### C. Contenerización Multi-etapa (Vite -> Nginx)
-*Archivo:* [Dockerfile (frontend)](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/frontend/Dockerfile)
+---
 
-El frontend utiliza una estrategia de compilación en dos etapas (Multi-Stage Build) para reducir al mínimo el tamaño de la imagen final servida en Kubernetes:
-1.  **Etapa de compilación (Node.js):** Descarga dependencias y compila los archivos estáticos optimizados con Vite en la carpeta `/app/dist`.
-2.  **Etapa de servicio (Nginx):** Copia únicamente el directorio `/app/dist` final y descarta todo el entorno pesado de Node.js. Expone Nginx en el puerto `80`.
+## 4. ⚙️ DevOps & Infraestructura
 
-#### D. Solución al Bug de Red de Nginx en Kubernetes (DNS Resolving)
-*Archivo:* [nginx.conf](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/frontend/nginx.conf) y [backend.yaml](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/k8s/backend.yaml)
+El despliegue y empaquetado del sistema está diseñado bajo estándares de reproducibilidad utilizando entornos contenerizados en Docker y Kubernetes.
 
-Al desplegar en Kubernetes, la directiva `proxy_pass http://backend:8000/api/` fallaba en Nginx debido a que el servicio de red de Kubernetes originalmente se llamaba `astralis-backend`. Nginx crasheaba al intentar arrancar porque su validador de configuración no encontraba el host `backend`.
-
-La solución consistió en renombrar el servicio en los manifiestos de Kubernetes a `backend` manteniendo el pod mapeado a `astralis-backend`:
+### Docker Compose
+Coordinación de los microservicios mediante variables de red interna y secuencias de inicio basadas en pruebas de salud del motor relacional PostgreSQL:
 
 ```yaml
+# Archivo: docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: astralis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d astralis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/astralis
+      - ML_SERVICE_URL=http://ml:8001
+    depends_on:
+      db:
+        condition: service_healthy
+      ml:
+        condition: service_started
+```
+
+### Orquestación en Kubernetes
+El despliegue en clúster utiliza manifiestos de red interna (`Service`) para resolver dinámicamente nombres de host sin acoplamientos rígidos de IP. El servicio del backend de FastAPI se define como `backend` coincidiendo con la configuración del reenvío de tráfico (proxy de Nginx en la imagen Docker del frontend):
+
+```yaml
+# Archivo: k8s/backend.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend  # Nombre coincidente con proxy_pass de Nginx
+  name: backend  # Coincide con proxy_pass http://backend:8000/api/ en el conf de Nginx
 spec:
   ports:
     - port: 8000
   selector:
-    app: astralis-backend  # Vincula el puerto de red al pod del backend
+    app: astralis-backend
 ```
 
-#### E. Script de Automatización de Despliegue en PowerShell
-*Archivo:* [deploy.ps1](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/deploy.ps1)
-
-Se diseñó un script interactivo en PowerShell que automatiza todo el flujo del despliegue tanto para Docker Compose como para Kubernetes. Detecta si el clúster activo es Minikube y se encarga de subir las imágenes al entorno simulado, compilar las imágenes Docker de frontend, backend y el microservicio de ML, aplicar los manifiestos ordenadamente (`secrets` -> `configmaps` -> `db` -> `ml` -> `backend` -> `frontend`), y sugerir los comandos finales de acceso y diagnóstico en tiempo real.
-
 ---
 
-## 3. 🧠 Rol E3: Data Science & Machine Learning Engineer
-El rol de Ciencia de Datos fundamenta científicamente el proyecto mediante la simulación de órbitas por gravedad y la clasificación de candidatos a exoplanetas.
+## 5. 📹 Grabaciones de Funcionamiento y Despliegue
 
-### 🌟 Funcionalidades Interesantes & Implementaciones de Código
+Se realizaron capturas demostrativas del funcionamiento general de la plataforma y del proceso de despliegue automatizado:
 
-#### A. Análisis y Clasificación del Dataset Kepler
-*Archivo:* [astralis_e3_fase1_fixed.ipynb](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/astralis_e3_fase1_fixed.ipynb)
+### A. Funcionamiento General de la Aplicación
+Demostración interactiva de la interfaz de usuario, incluyendo el inicio de sesión con JWT, el simulador orbital 2D (con controles de escala y velocidad), el visualizador 3D de planetas desarrollado en Three.js, el catálogo paginado y filtrado de exoplanetas con sus curvas de tránsito (Recharts), y el rastreador en tiempo real de la ISS:
 
-*   **Ingeniería de Características:** Limpieza y selección de parámetros físicos medidos por Kepler (profundidad de tránsito `koi_depth`, período orbital `koi_period`, radio planetario `koi_prad` y temperatura de equilibrio `koi_teq`).
-*   **Modelado Predictivo:** Clasificación binaria (`CONFIRMED` frente a `FALSE_POSITIVE`) usando modelos avanzados (Bosques Aleatorios y Gradient Boosting).
-*   **Evaluación del Rendimiento:** Reporte completo evaluando el F1-Score, precisión y recall, y visualización de la matriz de confusión para asegurar que el modelo sea robusto ante falsos positivos provocados por estrellas binarias eclipsantes.
+![Funcionamiento de la Página](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/Media/Video%20Funcionamiento%20Pagina.gif)
 
-#### B. Integración Gravitatoria N-Cuerpos
-*Directorio:* `science/src/`
+### B. Despliegue del Sistema (Script deploy.ps1)
+Muestra del proceso de orquestación y despliegue automatizado tanto en entornos locales utilizando contenedores de Docker Compose como en clústeres de orquestación de Kubernetes mediante el script interactivo en PowerShell:
 
-*   Implementación de algoritmos gravitacionales usando métodos Runge-Kutta para simular órbitas keplerianas.
-*   Usa el principio $T^2 = a^3 / M$ para calcular y contrastar los períodos simulados contra la realidad orbital, asegurando que las trayectorias de los planetas modelados en las APIs sigan de manera fiel las leyes de la física newtoniana.
-
-#### C. Arquitectura de Despliegue en Kubernetes y API de Inferencia
-*Archivos:* [ml.yaml](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/k8s/ml.yaml) y [README.md (ml_service)](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/ml_service/README.md)
-
-El clasificador se empaquetó como un microservicio FastAPI independiente (`astralis-ml`) y se integró en el orquestador de contenedores Kubernetes:
-*   **Orquestación en K8s (`k8s/ml.yaml`):** Se despliega con un replica-set de 1 pod y se expone internamente en el clúster a través del puerto `8001` mediante un servicio `ClusterIP` con el nombre de host DNS `astralis-ml`.
-*   **Resolución Dinámica:** El backend FastAPI resuelve y consume este servicio apuntando a `http://astralis-ml:8001` (inyectado mediante `ConfigMap` en `ml-service-url`).
-*   **Endpoints de API expuestos:**
-    1.  `GET /health`: Monitoreo y métricas básicas del modelo.
-    2.  `POST /predict`: Inferencia individual enviando 12 parámetros (KOI).
-    3.  `POST /predict/batch`: Inferencia masiva optimizada (lotes de hasta 500 candidatos).
-    4.  `GET /model/info`: Reporte de precisión, recall, F1-Score y peso/importancia de variables.
-    5.  `POST /model/retrain`: Dispara una tarea asíncrona (`BackgroundTasks`) que actualiza el modelo descargando datos frescos de la base de datos de la NASA mediante ADQL.
-
----
-
-## 4. 💻 Rol E4: Frontend & Visualización Engineer
-# ASTRALIS — Frontend (E4)
- 
-**Stack:** React · TypeScript · Vite · Three.js · Canvas API · Recharts · Axios
- 
-## Arquitectura
- 
-El frontend sigue una separación en capas: `pages/` orquesta las vistas, `hooks/` gestiona el estado y las llamadas al backend, `services/` centraliza la comunicación HTTP, y `components/` renderiza las piezas reutilizables. Ningún componente llama directamente a `fetch` o `axios`.
- 
-La autenticación usa JWT — el token se guarda en `localStorage` y un interceptor de Axios lo adjunta automáticamente en cada request. El estado global del usuario se maneja con `AuthContext` usando React Context API.
- 
-## Vistas principales
- 
-**Catálogo de Exoplanetas** — Consume `GET /api/exoplanets` para mostrar más de 9.000 candidatos del telescopio Kepler con filtros por clasificación (Confirmado, Candidato, Falso Positivo) y paginación. Las clasificaciones vienen de la columna `koi_disposition` del NASA Exoplanet Archive.
- 
-**Detalle de Exoplaneta** — Muestra los parámetros orbitales del planeta y su curva de luz de tránsito, calculada por el backend con un modelo basado en Mandel & Agol y renderizada con Recharts.
- 
-**Simulador Orbital** — Visualización 2D del sistema solar construida con Canvas API. Las velocidades angulares siguen la Tercera Ley de Kepler. Soporta zoom con scroll, drag para pan, trails de órbita y control de velocidad hasta 100×. Los datos de masa y radio vienen del endpoint `GET /api/simulation/bodies`. Al hacer click en un planeta se abre la vista 3D.
- 
-**Vista 3D de Planeta** — Construida con Three.js. Renderiza el planeta con textura real, rotación automática con inercia, drag para girar manualmente y zoom con scroll. Saturno incluye anillos con geometría `RingGeometry`.
- 
-**ISS Tracker** — Muestra la posición de la Estación Espacial Internacional en tiempo real sobre un mapa, consumiendo `GET /api/iss/position` cada pocos segundos.
- 
-**Login / Registro** — Formularios conectados al backend con manejo de errores del servidor. Implementa bloqueo progresivo: 3 intentos fallidos bloquean el formulario 30 segundos, complementando el rate limiting del backend.
- 
-## Seguridad
- 
-- Interceptor Axios adjunta JWT en cada request automáticamente
-- Lockout del lado del cliente en Login (3 intentos → 30s bloqueado)
-- Variables de entorno con Vite para separar configuración por ambiente
+![Despliegue de la Aplicación](file:///c:/Users/Stef/Documents/GitHub/Astralis_UNAL/Media/Video%20Deploy.gif)
