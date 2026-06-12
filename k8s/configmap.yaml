@@ -5,3 +5,5 @@ metadata:
 data:
   env: "development"
   frontend-url: "http://localhost:8080"
+  ml-service-url: "http://astralis-ml:8001"
+

@@ -2,7 +2,8 @@ import math
 import random
 from fastapi import APIRouter, HTTPException, Query
 from app.services.nasa import get_exoplanets, get_exoplanet_by_id
-from app.schemas.index import PaginatedResponse, Exoplanet
+from app.services import ml_client
+from app.schemas.index import PaginatedResponse, Exoplanet, MLFeatures, MLPrediction
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/exoplanets", tags=["exoplanets"])
@@ -49,6 +50,15 @@ def _generate_light_curve(planet_radius: float, orbital_period: float) -> list[d
     return points
 
 
+def _exoplanet_to_ml_features(exoplanet: dict) -> dict:
+    """Mapea un registro del catálogo a las features que espera el modelo de E3."""
+    return {
+        "koi_period": exoplanet.get("orbitalPeriod"),
+        "koi_prad": exoplanet.get("planetRadius"),
+        "koi_teq": exoplanet.get("equilibriumTemp"),
+    }
+
+
 @router.get("", response_model=PaginatedResponse[Exoplanet])
 async def list_exoplanets(
     page: int = Query(1, ge=1),
@@ -56,6 +66,63 @@ async def list_exoplanets(
     pageSize: int = Query(10, ge=1, le=100),
 ):
     return get_exoplanets(page=page, page_size=pageSize, filter_classification=filter)
+
+
+@router.post("/predict", response_model=MLPrediction, tags=["machine-learning"])
+async def predict_candidate(features: MLFeatures):
+    """
+    Clasifica un candidato a exoplaneta usando el modelo Random Forest del
+    microservicio ML (E3). Recibe las 12 features Kepler (todas opcionales,
+    se imputan con la mediana del set de entrenamiento si faltan) y
+    devuelve `classification` + `mlConfidence` + probabilidades por clase.
+    """
+    result = await ml_client.predict_exoplanet(features.model_dump())
+    if result is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Microservicio ML (E3) no disponible. Intenta de nuevo más tarde.",
+        )
+    return result
+
+
+@router.get("/ml/model-info", tags=["machine-learning"])
+async def ml_model_info():
+    """Proxy a `GET /model/info` del microservicio ML — versión, métricas y feature importances."""
+    info = await ml_client.get_model_info()
+    if info is None:
+        raise HTTPException(status_code=503, detail="Microservicio ML (E3) no disponible.")
+    return info
+
+
+@router.post("/ml/retrain", tags=["machine-learning"])
+async def ml_retrain():
+    """Proxy a `POST /model/retrain` del microservicio ML — dispara re-entrenamiento en background."""
+    result = await ml_client.trigger_retrain()
+    if result is None:
+        raise HTTPException(status_code=503, detail="Microservicio ML (E3) no disponible.")
+    return result
+
+
+@router.get("/{exoplanet_id}/ml-prediction", response_model=MLPrediction, tags=["machine-learning"])
+async def get_exoplanet_ml_prediction(exoplanet_id: str):
+    """
+    Clasifica un exoplaneta del catálogo usando el modelo de E3, a partir de
+    sus features disponibles (período orbital, radio y temperatura de
+    equilibrio). El resto de features se imputan con la mediana del set de
+    entrenamiento.
+    """
+    exoplanet = get_exoplanet_by_id(exoplanet_id)
+    if not exoplanet:
+        raise HTTPException(status_code=404, detail=f"Exoplaneta {exoplanet_id} no encontrado")
+
+    features = _exoplanet_to_ml_features(exoplanet)
+    result = await ml_client.predict_exoplanet(features)
+    if result is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Microservicio ML (E3) no disponible. Intenta de nuevo más tarde.",
+        )
+    return result
 
 
 @router.get("/{exoplanet_id}/lightcurve", response_model=list[LightCurvePoint])
